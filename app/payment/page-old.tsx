@@ -1,0 +1,501 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Header } from "@/components/header"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CreditCard, Smartphone, Shield, CheckCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { userAuth } from "@/lib/user-auth"
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+interface OrderData {
+  cartData: {
+    items: any[]
+    subtotal: number
+    tax: number
+    shipping: number
+    total: number
+  }
+  fullName: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  state: string
+  pincode: string
+}
+
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Header } from "@/components/header"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CreditCard, Wallet, Building2, Smartphone, Shield, AlertCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { userAuth } from "@/lib/user-auth"
+
+interface CartItem {
+  id: number
+  name: string
+  price: number
+  quantity: number
+  image: string
+  category: string
+}
+
+interface CheckoutData {
+  items: CartItem[]
+  subtotal: number
+  tax: number
+  shipping: number
+  total: number
+}
+
+declare global {
+  interface Window {
+    Razorpay: any
+  }
+}
+
+export default function PaymentPage() {
+  const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState("razorpay")
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    // Check login status
+    const loggedIn = userAuth.isLoggedIn()
+    const user = userAuth.getCurrentUser()
+    setIsLoggedIn(loggedIn)
+    setCurrentUser(user)
+
+    if (!loggedIn) {
+      toast({
+        title: "Login required",
+        description: "Please login to make a payment.",
+        variant: "destructive",
+      })
+      router.push("/login")
+      return
+    }
+
+    // Load checkout data from localStorage
+    const checkoutDataString = localStorage.getItem("radhika_checkout_cart")
+    if (!checkoutDataString) {
+      toast({
+        title: "No cart data",
+        description: "Please add items to cart and try again.",
+        variant: "destructive",
+      })
+      router.push("/cart")
+      return
+    }
+
+    try {
+      const data = JSON.parse(checkoutDataString)
+      setCheckoutData(data)
+    } catch (error) {
+      toast({
+        title: "Invalid cart data",
+        description: "Please restart the checkout process.",
+        variant: "destructive",
+      })
+      router.push("/cart")
+    }
+
+    // Load Razorpay script
+    const script = document.createElement("script")
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"
+    script.async = true
+    document.body.appendChild(script)
+
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [router, toast])
+
+  const processRazorpayPayment = async () => {
+    if (!checkoutData || !currentUser) return
+
+    setIsProcessing(true)
+
+    try {
+      // Create order on our backend
+      const response = await fetch('/api/payment/razorpay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: checkoutData.total,
+          currency: 'INR',
+          userId: currentUser.email,
+          orderDetails: {
+            items: checkoutData.items,
+            subtotal: checkoutData.subtotal,
+            tax: checkoutData.tax,
+            shipping: checkoutData.shipping,
+            total: checkoutData.total
+          }
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create payment order')
+      }
+
+      // Initialize Razorpay
+      const options = {
+        key: data.key,
+        amount: data.amount,
+        currency: data.currency,
+        name: 'Radhika Electronics',
+        description: 'Purchase from Radhika Electronics',
+        order_id: data.orderId,
+        handler: async function (response: any) {
+          try {
+            // Verify payment on backend
+            const verifyResponse = await fetch('/api/payment/razorpay', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                userId: currentUser.email
+              }),
+            })
+
+            const verifyData = await verifyResponse.json()
+
+            if (verifyData.success) {
+              // Clear cart after successful payment
+              await fetch('/api/user/cart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: currentUser.email,
+                  action: 'clear_cart'
+                })
+              })
+
+              // Clear checkout data
+              localStorage.removeItem("radhika_checkout_cart")
+
+              toast({
+                title: "Payment successful!",
+                description: "Your order has been placed successfully.",
+              })
+
+              router.push("/order-success")
+            } else {
+              throw new Error(verifyData.error || 'Payment verification failed')
+            }
+          } catch (error: any) {
+            toast({
+              title: "Payment verification failed",
+              description: error.message,
+              variant: "destructive",
+            })
+          }
+        },
+        prefill: {
+          name: currentUser.name,
+          email: currentUser.email,
+        },
+        theme: {
+          color: '#3B82F6'
+        },
+        modal: {
+          ondismiss: function() {
+            setIsProcessing(false)
+          }
+        }
+      }
+
+      const rzp = new window.Razorpay(options)
+      rzp.open()
+
+    } catch (error: any) {
+      toast({
+        title: "Payment failed",
+        description: error.message,
+        variant: "destructive",
+      })
+      setIsProcessing(false)
+    }
+  }
+
+  const handlePayment = async () => {
+    if (paymentMethod === "razorpay") {
+      await processRazorpayPayment()
+    } else {
+      toast({
+        title: "Coming soon",
+        description: "This payment method will be available soon.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (!checkoutData || !isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading payment details...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+                  {/* UPI Payment */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <RadioGroupItem value="upi" id="upi" />
+                      <Label htmlFor="upi" className="flex-1 cursor-pointer">
+                        <div className="flex items-center space-x-3">
+                          <Smartphone className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium">UPI Payment</p>
+                            <p className="text-sm text-gray-600">Pay using Google Pay, PhonePe, Paytm</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+
+                    {paymentMethod === "upi" && (
+                      <div className="ml-6 space-y-4">
+                        <div>
+                          <Label htmlFor="upiId">UPI ID</Label>
+                          <Input
+                            id="upiId"
+                            placeholder="yourname@paytm"
+                            value={paymentData.upiId}
+                            onChange={(e) => setPaymentData((prev) => ({ ...prev, upiId: e.target.value }))}
+                          />
+                        </div>
+                        <div className="flex space-x-4">
+                          <Button variant="outline" className="flex items-center space-x-2 bg-transparent">
+                            <img src="/placeholder.svg?height=20&width=20" alt="Google Pay" className="w-5 h-5" />
+                            <span>Google Pay</span>
+                          </Button>
+                          <Button variant="outline" className="flex items-center space-x-2 bg-transparent">
+                            <img src="/placeholder.svg?height=20&width=20" alt="PhonePe" className="w-5 h-5" />
+                            <span>PhonePe</span>
+                          </Button>
+                          <Button variant="outline" className="flex items-center space-x-2 bg-transparent">
+                            <img src="/placeholder.svg?height=20&width=20" alt="Paytm" className="w-5 h-5" />
+                            <span>Paytm</span>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Credit/Debit Card */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <RadioGroupItem value="card" id="card" />
+                      <Label htmlFor="card" className="flex-1 cursor-pointer">
+                        <div className="flex items-center space-x-3">
+                          <CreditCard className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium">Credit/Debit Card</p>
+                            <p className="text-sm text-gray-600">Visa, Mastercard, RuPay</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+
+                    {paymentMethod === "card" && (
+                      <div className="ml-6 space-y-4">
+                        <div>
+                          <Label htmlFor="cardNumber">Card Number</Label>
+                          <Input
+                            id="cardNumber"
+                            placeholder="1234 5678 9012 3456"
+                            value={paymentData.cardNumber}
+                            onChange={(e) => setPaymentData((prev) => ({ ...prev, cardNumber: e.target.value }))}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="expiryDate">Expiry Date</Label>
+                            <Input
+                              id="expiryDate"
+                              placeholder="MM/YY"
+                              value={paymentData.expiryDate}
+                              onChange={(e) => setPaymentData((prev) => ({ ...prev, expiryDate: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="cvv">CVV</Label>
+                            <Input
+                              id="cvv"
+                              placeholder="123"
+                              value={paymentData.cvv}
+                              onChange={(e) => setPaymentData((prev) => ({ ...prev, cvv: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="cardName">Cardholder Name</Label>
+                          <Input
+                            id="cardName"
+                            placeholder="Name on card"
+                            value={paymentData.cardName}
+                            onChange={(e) => setPaymentData((prev) => ({ ...prev, cardName: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Net Banking */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <RadioGroupItem value="netbanking" id="netbanking" />
+                      <Label htmlFor="netbanking" className="flex-1 cursor-pointer">
+                        <div className="flex items-center space-x-3">
+                          <Building className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium">Net Banking</p>
+                            <p className="text-sm text-gray-600">All major banks supported</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+
+                    {paymentMethod === "netbanking" && (
+                      <div className="ml-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="accountNumber">Account Number</Label>
+                            <Input
+                              id="accountNumber"
+                              placeholder="Account number"
+                              value={paymentData.accountNumber}
+                              onChange={(e) => setPaymentData((prev) => ({ ...prev, accountNumber: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="ifscCode">IFSC Code</Label>
+                            <Input
+                              id="ifscCode"
+                              placeholder="IFSC code"
+                              value={paymentData.ifscCode}
+                              onChange={(e) => setPaymentData((prev) => ({ ...prev, ifscCode: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button variant="outline" size="sm">
+                            SBI
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            HDFC
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            ICICI
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            Axis
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            PNB
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            Others
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </RadioGroup>
+
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                    <p className="text-sm text-blue-800">Your payment information is secure and encrypted</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handlePayment} className="mt-6">
+                  <Button type="submit" size="lg" className="w-full" disabled={isProcessing}>
+                    {isProcessing ? "Processing Payment..." : `Pay ₹${orderTotal.toLocaleString()}`}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Order Summary */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>₹57,497</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>GST (18%)</span>
+                  <span>₹10,349</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>₹500</span>
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total Amount</span>
+                  <span>₹{orderTotal.toLocaleString()}</span>
+                </div>
+
+                <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-800">✓ Secure payment gateway</p>
+                  <p className="text-sm text-green-800">✓ 256-bit SSL encryption</p>
+                  <p className="text-sm text-green-800">✓ PCI DSS compliant</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
