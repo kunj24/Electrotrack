@@ -75,9 +75,40 @@ class TransactionStore {
     const stored = localStorage.getItem("radhika_transactions")
     if (stored) {
       this.transactions = JSON.parse(stored)
+      this.fixDuplicateIds() // Clean up any duplicate IDs
     } else {
       this.transactions = initialTransactions
       this.saveTransactions()
+    }
+  }
+
+  private fixDuplicateIds() {
+    const seenIds = new Set<string>()
+    const fixedTransactions: Transaction[] = []
+    
+    this.transactions.forEach((transaction, index) => {
+      if (seenIds.has(transaction.id)) {
+        // Generate new unique ID for duplicate
+        const timestamp = Date.now() + index // Add index to ensure uniqueness
+        const randomSuffix = Math.random().toString(36).substring(2, 8)
+        const newId = `${timestamp}-${randomSuffix}`
+        
+        fixedTransactions.push({
+          ...transaction,
+          id: newId
+        })
+        seenIds.add(newId)
+      } else {
+        fixedTransactions.push(transaction)
+        seenIds.add(transaction.id)
+      }
+    })
+    
+    if (fixedTransactions.length !== this.transactions.length || 
+        fixedTransactions.some((t, i) => t.id !== this.transactions[i].id)) {
+      this.transactions = fixedTransactions
+      this.saveTransactions() // Save the cleaned up data
+      console.log('Fixed duplicate transaction IDs')
     }
   }
 
@@ -88,9 +119,14 @@ class TransactionStore {
   }
 
   addTransaction(data: Omit<Transaction, "id" | "createdAt" | "updatedAt">): Transaction {
+    // Generate a more unique ID using timestamp + random string
+    const timestamp = Date.now()
+    const randomSuffix = Math.random().toString(36).substring(2, 8)
+    const uniqueId = `${timestamp}-${randomSuffix}`
+    
     const newTransaction: Transaction = {
       ...data,
-      id: Date.now().toString(),
+      id: uniqueId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -138,6 +174,32 @@ class TransactionStore {
 // Create singleton instance
 export const transactionStore = new TransactionStore()
 
+// Helper function to fix duplicate IDs
+function fixDuplicateIds(transactions: Transaction[]): Transaction[] {
+  const seenIds = new Set<string>()
+  const fixedTransactions: Transaction[] = []
+  
+  transactions.forEach((transaction, index) => {
+    if (seenIds.has(transaction.id)) {
+      // Generate new unique ID for duplicate
+      const timestamp = Date.now() + index // Add index to ensure uniqueness
+      const randomSuffix = Math.random().toString(36).substring(2, 8)
+      const newId = `${timestamp}-${randomSuffix}`
+      
+      fixedTransactions.push({
+        ...transaction,
+        id: newId
+      })
+      seenIds.add(newId)
+    } else {
+      fixedTransactions.push(transaction)
+      seenIds.add(transaction.id)
+    }
+  })
+  
+  return fixedTransactions
+}
+
 // React hook for components
 export function useTransactionStore() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -146,7 +208,15 @@ export function useTransactionStore() {
     // Load from localStorage or use initial data
     const stored = localStorage.getItem("radhika_transactions")
     if (stored) {
-      setTransactions(JSON.parse(stored))
+      const loadedTransactions = JSON.parse(stored)
+      // Fix any duplicate IDs
+      const fixedTransactions = fixDuplicateIds(loadedTransactions)
+      setTransactions(fixedTransactions)
+      
+      // Save back if we made changes
+      if (fixedTransactions !== loadedTransactions) {
+        localStorage.setItem("radhika_transactions", JSON.stringify(fixedTransactions))
+      }
     } else {
       setTransactions(initialTransactions)
     }
@@ -160,9 +230,14 @@ export function useTransactionStore() {
   }, [transactions])
 
   const addTransaction = (data: Omit<Transaction, "id" | "createdAt" | "updatedAt">) => {
+    // Generate a more unique ID using timestamp + random string
+    const timestamp = Date.now()
+    const randomSuffix = Math.random().toString(36).substring(2, 8)
+    const uniqueId = `${timestamp}-${randomSuffix}`
+    
     const newTransaction: Transaction = {
       ...data,
-      id: Date.now().toString(),
+      id: uniqueId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }

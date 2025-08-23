@@ -219,16 +219,19 @@ export default function ShippingPage() {
       })
 
       // Add each cart item as a separate sale in admin system
-      cartData.items.forEach((item) => {
+      cartData.items.forEach((item, itemIndex) => {
         for (let i = 0; i < item.quantity; i++) {
-          addOnlineSale({
-            description: item.name,
-            category: item.category,
-            amount: item.price,
-            paymentMethod: shippingData.paymentMethod === "cod" ? "COD" : "Online",
-            customer: shippingData.fullName,
-            orderId: `ORD${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          })
+          // Add a small delay to ensure unique timestamps
+          setTimeout(() => {
+            addOnlineSale({
+              description: item.name,
+              category: item.category,
+              amount: item.price,
+              paymentMethod: shippingData.paymentMethod === "cod" ? "COD" : "Online",
+              customer: shippingData.fullName,
+              orderId: `ORD${Date.now()}_${itemIndex}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+            })
+          }, (itemIndex * item.quantity + i) * 10) // 10ms delay between each transaction
         }
       })
 
@@ -247,14 +250,26 @@ export default function ShippingPage() {
         router.push("/payment")
       } else {
         // Process COD order
+        // Clear cart from database
+        await fetch('/api/user/cart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.email,
+            action: 'clear_cart'
+          })
+        })
+
         toast({
           title: "Order placed successfully!",
           description:
             "Your order will be delivered within 3-5 business days. Order details have been added to our system.",
         })
 
-        // Clear cart and redirect to success page
+        // Clear cart from localStorage and trigger cart update event
         localStorage.removeItem("radhika_checkout_cart")
+        window.dispatchEvent(new Event("cartUpdated"))
+        
         router.push("/order-success")
       }
     } catch (error) {

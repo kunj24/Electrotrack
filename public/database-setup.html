@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Setup</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Electrotrack Database Setup</h1>
+    
+    <button onclick="setupDatabase()">Setup Database & Create Tables</button>
+    <button onclick="testConnection()">Test MongoDB Connection</button>
+    <button onclick="checkCollections()">List Collections</button>
+    
+    <div id="output"></div>
+
+    <script>
+        async function setupDatabase() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<div class="info">Setting up database...</div>';
+            
+            try {
+                const response = await fetch('/api/setup-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    output.innerHTML = `<div class="success">✅ Database setup successful!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    output.innerHTML = `<div class="error">❌ Setup failed: ${data.error}</div>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testConnection() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<div class="info">Testing connection...</div>';
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    output.innerHTML = `<div class="success">✅ Connection successful!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    output.innerHTML = `<div class="error">❌ Connection failed: ${data.error}</div>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function checkCollections() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<div class="info">Checking collections...</div>';
+            
+            try {
+                // Try to fetch from different endpoints to see what's available
+                const promises = [
+                    fetch('/api/user').then(r => ({ endpoint: 'users', ok: r.ok, status: r.status })),
+                    fetch('/api/orders').then(r => ({ endpoint: 'orders', ok: r.ok, status: r.status })),
+                    fetch('/api/products').then(r => ({ endpoint: 'products', ok: r.ok, status: r.status })),
+                    fetch('/api/categories').then(r => ({ endpoint: 'categories', ok: r.ok, status: r.status }))
+                ];
+                
+                const results = await Promise.all(promises);
+                output.innerHTML = `<div class="info">API Endpoints Status:</div><pre>${JSON.stringify(results, null, 2)}</pre>`;
+            } catch (error) {
+                output.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

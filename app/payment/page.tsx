@@ -172,6 +172,9 @@ export default function PaymentPage() {
               // Clear checkout data
               localStorage.removeItem("radhika_checkout_cart")
 
+              // Trigger cart update event to refresh header cart count
+              window.dispatchEvent(new Event("cartUpdated"))
+
               toast({
                 title: "Payment successful!",
                 description: "Your order has been placed successfully.",

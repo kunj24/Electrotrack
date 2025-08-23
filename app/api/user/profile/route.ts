@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         id: user._id,
         name: user.name,
         email: user.email,
-        businessType: user.businessType,
+        phone: user.phone || '',
         shippingAddresses: user.shippingAddresses || [],
         preferences: user.preferences || {}
       }
@@ -139,14 +139,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'update_profile') {
-      const { name, businessType, phone } = data
+      const { name, phone } = data
       
       await users.updateOne(
         { email: userId },
         { 
           $set: { 
             name: name || '',
-            businessType: businessType || '',
             phone: phone || '',
             updatedAt: new Date()
           }

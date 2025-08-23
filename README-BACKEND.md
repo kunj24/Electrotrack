@@ -89,24 +89,7 @@ POST to `http://localhost:3000/api/test-db`:
 - **Error Handling**: Proper error messages without exposing sensitive data
 - **SQL Injection Protection**: MongoDB's native protection
 
-## 📊 Database Schema
-
-### Users Collection
-```javascript
-{
-  _id: ObjectId,
-  name: "John Doe",
-  email: "john@example.com",
-  password: "hashed_password",
-  businessType: "electronics",
-  createdAt: Date,
-  updatedAt: Date,
-  lastLogin: Date,
-  isActive: Boolean
-}
-```
-
-## 🚀 Next Steps
+##  Next Steps
 
 1. **Set up MongoDB** (Atlas recommended)
 2. **Test registration and login**

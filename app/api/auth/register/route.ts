@@ -6,8 +6,7 @@ import { z } from 'zod'
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  businessType: z.string().optional().default('electronics')
+  password: z.string().min(6, 'Password must be at least 6 characters')
 })
 
 export async function POST(request: NextRequest) {
@@ -38,7 +37,6 @@ export async function POST(request: NextRequest) {
       name: validatedData.name,
       email: validatedData.email,
       password: hashedPassword,
-      businessType: validatedData.businessType,
       createdAt: new Date(),
       updatedAt: new Date(),
       isActive: true
@@ -51,7 +49,6 @@ export async function POST(request: NextRequest) {
       id: result.insertedId,
       name: newUser.name,
       email: newUser.email,
-      businessType: newUser.businessType,
       createdAt: newUser.createdAt
     }
     

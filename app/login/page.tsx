@@ -100,7 +100,6 @@ export default function LoginPage() {
             id: data.user.id,
             email: data.user.email,
             name: data.user.name,
-            businessType: data.user.businessType,
             loginTime: new Date().toISOString(),
           },
         }
