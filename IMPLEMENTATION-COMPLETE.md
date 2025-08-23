@@ -48,7 +48,106 @@ Your Radhika Electronics application now has a **complete, production-ready back
 - ✅ **Order creation in MongoDB after successful payment**
 - ✅ Cart automatically cleared after successful payment
 
-##  **Complete User Flow**
+## 🗄️ **Database Collections Structure**
+
+### Users Collection
+```javascript
+{
+  _id: ObjectId,
+  name: "John Doe",
+  email: "john@example.com",
+  password: "hashed_password", 
+  phone: "9876543210",
+  businessType: "electronics",
+  shippingAddresses: [
+    {
+      id: "addr_123",
+      fullName: "John Doe",
+      address: "123 Main Street, Apartment 4B", 
+      city: "Mumbai",
+      state: "Maharashtra",
+      pincode: "400001",
+      phone: "9876543210",
+      type: "Home",
+      isDefault: true,
+      createdAt: Date
+    }
+  ],
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Orders Collection (NEW)
+```javascript
+{
+  _id: ObjectId,
+  orderId: "ORD-1694847600000",
+  userEmail: "user@example.com",
+  items: [
+    {
+      id: 1,
+      name: "iPhone 15 Pro",
+      price: 119999,
+      quantity: 1,
+      category: "smartphones"
+    }
+  ],
+  shippingAddress: {
+    fullName: "John Doe",
+    address: "123 Main Street",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400001",
+    phone: "9876543210"
+  },
+  paymentId: "pay_xyz123",
+  total: 119999,
+  status: "Processing", // Processing → Shipped → Delivered
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+```
+
+### Carts Collection
+```javascript
+{
+  userId: "user@email.com",
+  items: [
+    {
+      productId: "prod_123",
+      name: "Product Name",
+      price: 1000,
+      quantity: 2,
+      image: "/path/to/image.jpg",
+      category: "electronics"
+    }
+  ],
+  updatedAt: Date
+}
+```
+
+### Orders Collection
+```javascript
+{
+  razorpayOrderId: "order_xyz123",
+  userId: "user@email.com",
+  amount: 5000,
+  currency: "INR",
+  status: "completed",
+  orderDetails: {
+    items: [...],
+    subtotal: 4200,
+    tax: 756,
+    shipping: 500,
+    total: 5000
+  },
+  createdAt: Date
+}
+```
+
+## 🚀 **Complete User Flow**
 
 ### 1. **New User Registration**
 ```

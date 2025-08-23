@@ -18,6 +18,7 @@ export default function SignUpPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    businessType: "electronics",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -67,6 +68,7 @@ export default function SignUpPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          businessType: formData.businessType,
         }),
       })
 
@@ -162,6 +164,22 @@ export default function SignUpPage() {
                     className={errors.confirmPassword ? "border-red-500" : ""}
                   />
                   {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+                </div>
+
+                <div>
+                  <Label htmlFor="businessType">Business Type</Label>
+                  <Select
+                    value={formData.businessType}
+                    onValueChange={(value) => handleInputChange("businessType", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="electronics">Electronics</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-gray-600 mt-1">Currently we only support electronics business</p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>

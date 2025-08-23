@@ -124,8 +124,8 @@ export default function AdminTransactions() {
                   <TableBody>
                     {filteredTransactions
                       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map((transaction, index) => (
-                        <TableRow key={`${transaction.id}-${index}`}>
+                      .map((transaction) => (
+                        <TableRow key={transaction.id}>
                           <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
                           <TableCell className="font-medium">{transaction.description}</TableCell>
                           <TableCell>
