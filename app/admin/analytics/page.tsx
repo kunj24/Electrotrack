@@ -183,181 +183,240 @@ export default function AdminAnalytics() {
         <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
         
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <DollarSign className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{data.totalRevenue.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-600">₹{data.totalRevenue.toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1">All time earnings</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+              <TrendingDown className="h-5 w-5 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">₹{data.totalExpenses.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-red-600">₹{data.totalExpenses.toLocaleString('en-IN')}</div>
+              <p className="text-xs text-muted-foreground mt-1">Total spending</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${data.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ₹{data.totalProfit.toFixed(2)}
+              <div className={`text-2xl font-bold ${data.totalProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                ₹{data.totalProfit.toLocaleString('en-IN')}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Net earnings</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              <ShoppingCart className="h-5 w-5 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.totalOrders}</div>
+              <div className="text-2xl font-bold text-purple-600">{data.totalOrders}</div>
+              <p className="text-xs text-muted-foreground mt-1">Completed orders</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.totalProducts}</div>
+              <div className="text-2xl font-bold text-orange-600">{data.totalProducts}</div>
+              <p className="text-xs text-muted-foreground mt-1">In inventory</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-5 w-5 text-indigo-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.totalUsers}</div>
+              <div className="text-2xl font-bold text-indigo-600">{data.totalUsers}</div>
+              <p className="text-xs text-muted-foreground mt-1">Registered users</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           {/* Financial Comparison Bar Chart */}
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
+                <BarChart3 className="h-6 w-6 text-blue-600" />
                 Financial Overview
               </CardTitle>
               <CardDescription>Revenue, Expenses & Profit comparison</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={data.chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => `₹${value.toLocaleString()}`} />
-                  <Tooltip 
-                    formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
-                    labelStyle={{ color: '#000' }}
-                  />
-                  <Bar dataKey="value">
-                    {data.chartData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis 
+                      dataKey="name" 
+                      fontSize={12}
+                      tick={{ fill: '#666' }}
+                    />
+                    <YAxis 
+                      tickFormatter={(value) => `₹${(value/1000).toFixed(0)}K`}
+                      fontSize={12}
+                      tick={{ fill: '#666' }}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
+                      labelStyle={{ color: '#000', fontWeight: 'bold' }}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #ccc',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={60}>
+                      {data.chartData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
           {/* Revenue vs Expenses Pie Chart */}
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5" />
+                <PieChart className="h-6 w-6 text-green-600" />
                 Revenue Distribution
               </CardTitle>
               <CardDescription>Revenue vs Expenses breakdown</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsPieChart>
-                  <Pie
-                    data={data.pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }: { name: string; percent?: number }) => 
-                      `${name} ${percent ? (percent * 100).toFixed(0) : '0'}%`
-                    }
-                    outerRadius={80}
-                    dataKey="value"
-                  >
-                    {data.pieData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, '']} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={data.pieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }: { name: string; percent?: number }) => 
+                        `${name} ${percent ? (percent * 100).toFixed(0) : '0'}%`
+                      }
+                      outerRadius={120}
+                      innerRadius={40}
+                      dataKey="value"
+                    >
+                      {data.pieData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #ccc',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="circle"
+                    />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Monthly Trends Line Chart */}
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <LineChart className="h-5 w-5" />
+              <LineChart className="h-6 w-6 text-purple-600" />
               Monthly Financial Trends
             </CardTitle>
             <CardDescription>6-month revenue, expenses & profit trends</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <RechartsLineChart data={data.monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `₹${value.toLocaleString()}`} />
-                <Tooltip 
-                  formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
-                  labelStyle={{ color: '#000' }}
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke={COLORS.revenue} 
-                  strokeWidth={3}
-                  name="Revenue"
-                  dot={{ fill: COLORS.revenue, strokeWidth: 2, r: 4 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="expenses" 
-                  stroke={COLORS.expenses} 
-                  strokeWidth={3}
-                  name="Expenses"
-                  dot={{ fill: COLORS.expenses, strokeWidth: 2, r: 4 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="profit" 
-                  stroke={COLORS.profit} 
-                  strokeWidth={3}
-                  name="Profit"
-                  dot={{ fill: COLORS.profit, strokeWidth: 2, r: 4 }}
-                />
-              </RechartsLineChart>
-            </ResponsiveContainer>
+            <div className="h-[500px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsLineChart data={data.monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis 
+                    dataKey="month" 
+                    fontSize={12}
+                    tick={{ fill: '#666' }}
+                  />
+                  <YAxis 
+                    tickFormatter={(value) => `₹${(value/1000).toFixed(0)}K`}
+                    fontSize={12}
+                    tick={{ fill: '#666' }}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
+                    labelStyle={{ color: '#000', fontWeight: 'bold' }}
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #ccc',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    iconType="line"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke={COLORS.revenue} 
+                    strokeWidth={4}
+                    name="Revenue"
+                    dot={{ fill: COLORS.revenue, strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, strokeWidth: 2 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="expenses" 
+                    stroke={COLORS.expenses} 
+                    strokeWidth={4}
+                    name="Expenses"
+                    dot={{ fill: COLORS.expenses, strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, strokeWidth: 2 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="profit" 
+                    stroke={COLORS.profit} 
+                    strokeWidth={4}
+                    name="Profit"
+                    dot={{ fill: COLORS.profit, strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, strokeWidth: 2 }}
+                  />
+                </RechartsLineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
