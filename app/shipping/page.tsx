@@ -246,16 +246,70 @@ export default function ShippingPage() {
         // Redirect to payment page
         router.push("/payment")
       } else {
-        // Process COD order
-        toast({
-          title: "Order placed successfully!",
-          description:
-            "Your order will be delivered within 3-5 business days. Order details have been added to our system.",
-        })
+        // Process COD order - Save to MongoDB
+        try {
+          const codOrderData = {
+            userEmail: currentUser.email,
+            items: cartData.items.map(item => ({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              category: item.category,
+              image: "" // Add image if available
+            })),
+            shippingAddress: {
+              fullName: shippingData.fullName,
+              address: shippingData.address,
+              city: shippingData.city,
+              state: shippingData.state,
+              pincode: shippingData.pincode,
+              phone: shippingData.phone
+            },
+            paymentMethod: "Cash on Delivery",
+            total: finalTotal,
+            subtotal: cartData.subtotal,
+            tax: cartData.tax,
+            shipping: deliveryFee,
+            status: "processing"
+          }
 
-        // Clear cart and redirect to success page
-        localStorage.removeItem("radhika_checkout_cart")
-        router.push("/order-success")
+          const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(codOrderData)
+          })
+
+          const result = await response.json()
+          
+          if (result.success) {
+            // Update localStorage with the generated orderId
+            orderData.orderId = result.orderId
+            localStorage.setItem("radhika_current_order", JSON.stringify(orderData))
+            
+            toast({
+              title: "Order placed successfully!",
+              description: `Your order ${result.orderId} will be delivered within 3-5 business days.`,
+            })
+
+            // Clear cart and redirect to success page
+            localStorage.removeItem("radhika_checkout_cart")
+            router.push("/order-success")
+          } else {
+            throw new Error(result.error || 'Failed to save order')
+          }
+        } catch (orderError) {
+          console.error("Error saving COD order:", orderError)
+          toast({
+            title: "Error saving order",
+            description: "Order was processed but may not appear in your order history. Please contact support.",
+            variant: "destructive",
+          })
+          
+          // Still redirect to success since admin system was updated
+          localStorage.removeItem("radhika_checkout_cart")
+          router.push("/order-success")
+        }
       }
     } catch (error) {
       console.error("Error placing order:", error)

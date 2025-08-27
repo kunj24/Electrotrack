@@ -200,9 +200,9 @@ export function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/orders" className="flex items-center">
+                    <Link href="/profile" className="flex items-center">
                       <Package className="mr-2 h-4 w-4" />
-                      <span>My Orders</span>
+                      <span>My Profile</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
@@ -279,9 +279,9 @@ export function Header() {
                     <UserCircle className="h-4 w-4" />
                     <span>Profile</span>
                   </Link>
-                  <Link href="/orders" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 py-2">
+                  <Link href="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 py-2">
                     <Package className="h-4 w-4" />
-                    <span>My Orders</span>
+                    <span>My Profile</span>
                   </Link>
                   <button
                     onClick={handleLogout}
