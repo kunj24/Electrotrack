@@ -3,14 +3,25 @@ import Razorpay from 'razorpay'
 import { getDb } from '@/lib/mongodb'
 import crypto from 'crypto'
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-})
+// Initialize Razorpay only if keys are available
+let razorpay: Razorpay | null = null
+
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  })
+}
 
 // Create payment order
 export async function POST(request: NextRequest) {
   try {
+    if (!razorpay) {
+      return NextResponse.json({
+        error: 'Payment gateway not configured. Please contact administrator.'
+      }, { status: 500 })
+    }
+
     const body = await request.json()
     const { amount, currency = 'INR', userId, orderDetails } = body
     
@@ -28,7 +39,7 @@ export async function POST(request: NextRequest) {
       payment_capture: 1
     }
     
-    const order = await razorpay.orders.create(options)
+    const order = await razorpay!.orders.create(options)
     
     // Store temporary order in database
     const db = await getDb()
