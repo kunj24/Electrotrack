@@ -32,7 +32,10 @@ export default function AdminTransactions() {
     const matchesFilter = filterType === "all" || transaction.type === filterType
 
     return matchesSearch && matchesFilter
-  })
+  }).filter((transaction, index, self) => 
+    // Remove duplicates based on ID
+    index === self.findIndex(t => t.id === transaction.id)
+  )
 
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this transaction?")) {
@@ -124,8 +127,8 @@ export default function AdminTransactions() {
                   <TableBody>
                     {filteredTransactions
                       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map((transaction) => (
-                        <TableRow key={transaction.id}>
+                      .map((transaction, index) => (
+                        <TableRow key={`${transaction.id}-${index}`}>
                           <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
                           <TableCell className="font-medium">{transaction.description}</TableCell>
                           <TableCell>
