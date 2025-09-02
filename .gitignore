@@ -25,3 +25,33 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# VS Code settings and workspace files
+.vscode/
+*.code-workspace
+
+# Documentation and diagram files
+*DIAGRAM*.md
+*ARCHITECTURE*.md
+*PRESENTATION*.md
+*CONTEXT*.md
+*USE_CASE*.md
+*MERMAID*.md
+*SRS*.md
+*SRS*.docx
+*SEQUENCE*.md
+
+# Empty placeholder files
+*.empty
+.gitkeep
+
+# Temporary and backup files
+*.backup
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Test files
+test-*.html
+**/test-*
