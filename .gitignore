@@ -27,8 +27,11 @@ yarn-error.log*
 next-env.d.ts
 
 # VS Code settings and workspace files
-.vscode/
 *.code-workspace
+
+# VS Code settings - allow settings.json but ignore other vscode files
+.vscode/*
+!.vscode/settings.json
 
 # Documentation and diagram files
 *DIAGRAM*.md

@@ -1,0 +1,53 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/*.backup": true,
+    "**/*.tmp": true,
+    "**/test-*.html": true,
+    "**/*DIAGRAM*.md": true,
+    "**/*ARCHITECTURE*.md": true,
+    "**/*PRESENTATION*.md": true,
+    "**/*CONTEXT*.md": true,
+    "**/*USE_CASE*.md": true,
+    "**/*MERMAID*.md": true,
+    "**/*SRS*.md": true,
+    "**/*SRS*.docx": true,
+    "**/*SEQUENCE*.md": true,
+    "**/MONGOOSE_ORDER_SYSTEM.md": true,
+    "**/ORDER_DATABASE_DOCUMENTATION.md": true,
+    "**/page-old.tsx": true,
+    "**/simple-order.ts": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/.next": true,
+    "**/build": true,
+    "**/out": true,
+    "**/*.backup": true,
+    "**/*.tmp": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/build/**": true,
+    "**/out/**": true
+  },
+  "git.ignoreLimitWarning": true,
+  "git.decorations.enabled": true,
+  "git.showUntracked": false,
+  "scm.defaultViewMode": "list",
+  "scm.showIncomingChanges": "never",
+  "scm.showOutgoingChanges": "never",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.formatOnSave": true,
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "explorer.compactFolders": false,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false
+}
