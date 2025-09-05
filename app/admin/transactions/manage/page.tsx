@@ -297,34 +297,6 @@ export default function ManageTransaction() {
             </CardContent>
           </Card>
 
-          {/* Help Section */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Quick Tips</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <h4 className="font-semibold text-green-600 mb-2">Income Categories:</h4>
-                  <ul className="space-y-1 text-gray-600">
-                    <li>• Sales - In-store product sales</li>
-                    <li>• Online Sales - E-commerce transactions</li>
-                    <li>• Repairs - Device repair services</li>
-                    <li>• Services - Installation & support</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-red-600 mb-2">Expense Categories:</h4>
-                  <ul className="space-y-1 text-gray-600">
-                    <li>• Inventory - Product purchases</li>
-                    <li>• Rent - Store rental costs</li>
-                    <li>• Utilities - Electricity, internet, etc.</li>
-                    <li>• Staff Salary - Employee payments</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </main>
       </div>
     </AdminRouteGuard>
