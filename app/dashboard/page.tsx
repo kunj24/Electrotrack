@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShoppingCart, Star, Search, Filter } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { userAuth } from "@/lib/user-auth"
+import { userAuth } from "@/lib/user-auth" 
+import { CartService, type CartItem } from "@/lib/cart-service"
 import { useRouter } from "next/navigation"
 
 const products = [
@@ -148,28 +149,37 @@ export default function DashboardPage() {
     }
 
     try {
-      const response = await fetch('/api/user/cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: currentUser.email,
-          action: 'add_item',
-          item: {
-            productId: product.id.toString(),
-            name: product.name,
-            price: product.price,
-            quantity: 1,
-            image: product.image,
-            category: product.category
-          }
-        }),
-      })
+      // Get current cart
+      const currentCart = await CartService.getCart(currentUser.email)
+      
+      // Check if item already exists in cart
+      const existingItemIndex = currentCart.findIndex(item => item.id === product.id.toString())
+      
+      let updatedCart: CartItem[]
+      if (existingItemIndex >= 0) {
+        // Update quantity of existing item
+        updatedCart = currentCart.map((item, index) => 
+          index === existingItemIndex 
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      } else {
+        // Add new item to cart
+        const newItem: CartItem = {
+          id: product.id.toString(),
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          image: product.image,
+          category: product.category
+        }
+        updatedCart = [...currentCart, newItem]
+      }
 
-      const data = await response.json()
+      // Save updated cart
+      const success = await CartService.saveCart(currentUser.email, updatedCart)
 
-      if (data.success) {
+      if (success) {
         toast({
           title: "Added to cart!",
           description: `${product.name} has been added to your cart.`,
@@ -178,7 +188,7 @@ export default function DashboardPage() {
         // Trigger header refresh by dispatching a custom event
         window.dispatchEvent(new CustomEvent('cartUpdated'))
       } else {
-        throw new Error(data.error || 'Failed to add item to cart')
+        throw new Error('Failed to save cart')
       }
     } catch (error: any) {
       console.error('Add to cart error:', error)

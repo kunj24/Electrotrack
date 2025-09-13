@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Minus, Plus, Trash2, ShoppingBag, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { userAuth } from "@/lib/user-auth"
+import { CartService, type CartItem as ServiceCartItem } from "@/lib/cart-service"
 
 interface CartItem {
   id: number
@@ -39,23 +40,19 @@ export default function CartPage() {
       setCurrentUser(user)
       
       if (loggedIn && user) {
-        // Load cart from database
+        // Load cart from database using new cart service
         try {
-          const response = await fetch(`/api/user/cart?userId=${encodeURIComponent(user.email)}`)
-          const data = await response.json()
-          
-          if (data.success) {
-            const dbItems = data.cart.map((item: any, index: number) => ({
-              id: index + 1, // Convert to the format expected by the UI
-              name: item.name,
-              price: item.price,
-              quantity: item.quantity,
-              image: item.image,
-              category: item.category,
-              productId: item.productId
-            }))
-            setCartItems(dbItems)
-          }
+          const dbItems = await CartService.getCart(user.email)
+          const uiItems = dbItems.map((item, index) => ({
+            id: parseInt(item.id),
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image || '/placeholder.jpg',
+            category: item.category || 'Electronics',
+            productId: item.id
+          }))
+          setCartItems(uiItems)
         } catch (error) {
           console.error('Failed to load cart:', error)
         }
@@ -83,25 +80,27 @@ export default function CartPage() {
     }
     
     // Update locally first
-    setCartItems((items) => items.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item)))
+    const updatedItems = cartItems.map((item) => 
+      item.id === id ? { ...item, quantity: newQuantity } : item
+    )
+    setCartItems(updatedItems)
+    
+    // Convert to service format and save to database
+    const serviceItems: ServiceCartItem[] = updatedItems.map(item => ({
+      id: item.productId || item.id.toString(),
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      image: item.image,
+      category: item.category
+    }))
     
     try {
-      // Update in database
-      const item = cartItems.find(item => item.id === id)
-      if (item) {
-        await fetch('/api/user/cart', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: currentUser.email,
-            action: 'update_quantity',
-            productId: item.productId || item.id.toString(),
-            quantity: newQuantity
-          })
-        })
-      }
+      await CartService.saveCart(currentUser.email, serviceItems)
     } catch (error) {
       console.error('Failed to update cart:', error)
+      // Revert local changes on error
+      setCartItems(cartItems)
     }
   }
 
@@ -116,29 +115,29 @@ export default function CartPage() {
     }
     
     // Update locally first
-    setCartItems((items) => items.filter((item) => item.id !== id))
+    const updatedItems = cartItems.filter((item) => item.id !== id)
+    setCartItems(updatedItems)
+    
+    // Convert to service format and save to database
+    const serviceItems: ServiceCartItem[] = updatedItems.map(item => ({
+      id: item.productId || item.id.toString(),
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      image: item.image,
+      category: item.category
+    }))
     
     try {
-      // Remove from database
-      const item = cartItems.find(item => item.id === id)
-      if (item) {
-        await fetch('/api/user/cart', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: currentUser.email,
-            action: 'remove_item',
-            productId: item.productId || item.id.toString()
-          })
-        })
-      }
-      
+      await CartService.saveCart(currentUser.email, serviceItems)
       toast({
         title: "Item removed",
         description: "Item has been removed from your cart.",
       })
     } catch (error) {
       console.error('Failed to remove item:', error)
+      // Revert local changes on error
+      setCartItems(cartItems)
     }
   }
 

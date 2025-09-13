@@ -39,6 +39,7 @@ interface AnalyticsData {
   totalOrders: number 
   totalProducts: number
   totalUsers: number
+  activeSessions: number
   recentTransactions: any[]
   chartData: any[]
   pieData: any[]
@@ -48,11 +49,28 @@ interface AnalyticsData {
 export default function AdminAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [userStats, setUserStats] = useState({ totalUsers: 0, activeSessions: 0 })
   const { transactions, getStats } = useTransactionStore()
 
   useEffect(() => {
     processAnalytics()
+    fetchUserStats()
   }, [transactions])
+
+  const fetchUserStats = async () => {
+    try {
+      const response = await fetch('/api/admin/user-stats')
+      if (response.ok) {
+        const stats = await response.json()
+        setUserStats({
+          totalUsers: stats.totalUsers,
+          activeSessions: stats.activeSessions
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error)
+    }
+  }
 
   const processAnalytics = () => {
     try {
@@ -80,7 +98,8 @@ export default function AdminAnalytics() {
         totalProfit: stats.netProfit,
         totalOrders: transactions.filter(t => t.type === 'income').length,
         totalProducts: 0,
-        totalUsers: 0,
+        totalUsers: userStats.totalUsers,
+        activeSessions: userStats.activeSessions,
         recentTransactions: transactions.slice(0, 5).map(t => ({
           customerEmail: t.notes?.includes('Customer:') ? t.notes.split('Customer: ')[1]?.split(',')[0] : 'Store Transaction',
           totalAmount: t.amount,
@@ -101,6 +120,7 @@ export default function AdminAnalytics() {
         totalOrders: 0,
         totalProducts: 0,
         totalUsers: 0,
+        activeSessions: 0,
         recentTransactions: [],
         chartData: [],
         pieData: [],
@@ -248,7 +268,9 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-indigo-600">{data.totalUsers}</div>
-              <p className="text-xs text-muted-foreground mt-1">Registered users</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Registered users • {data.activeSessions} active sessions
+              </p>
             </CardContent>
           </Card>
         </div>

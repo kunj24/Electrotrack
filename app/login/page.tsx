@@ -17,6 +17,7 @@ import { Eye, EyeOff, User, Shield, Mail, Lock, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { adminAuth } from "@/lib/admin-auth"
 import { googleAuth } from "@/lib/google-auth"
+import { CartService } from "@/lib/cart-service"
 
 export default function LoginPage() {
   const [userFormData, setUserFormData] = useState({
@@ -107,6 +108,9 @@ export default function LoginPage() {
         }
         localStorage.setItem("radhika_user_session", JSON.stringify(userSession))
 
+        // Restore cart after login (optional - cart will be loaded when user visits cart page)
+        // This ensures cart persistence across sessions
+        
         toast({
           title: "Login successful!",
           description: "Welcome back to Radhika Electronics.",
@@ -169,6 +173,9 @@ export default function LoginPage() {
           title: "Google login successful!",
           description: `Welcome ${result.user.name}! Redirecting to dashboard...`,
         })
+        
+        // Cart will be automatically restored when user visits cart page
+        // due to the cart persistence implementation
         
         // Redirect to dashboard after successful login
         setTimeout(() => {

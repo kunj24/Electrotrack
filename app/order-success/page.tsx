@@ -6,15 +6,35 @@ import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle, Package, Truck, Home } from "lucide-react"
+import { userAuth } from "@/lib/user-auth"
+import { CartService } from "@/lib/cart-service"
 
 export default function OrderSuccessPage() {
   const [orderData, setOrderData] = useState<any>(null)
 
   useEffect(() => {
-    const storedOrderData = localStorage.getItem("radhika_current_order")
-    if (storedOrderData) {
-      setOrderData(JSON.parse(storedOrderData))
+    const initializeOrderSuccess = async () => {
+      const storedOrderData = localStorage.getItem("radhika_current_order")
+      if (storedOrderData) {
+        setOrderData(JSON.parse(storedOrderData))
+        
+        // Clear the cart after successful order
+        const user = userAuth.getCurrentUser()
+        if (user) {
+          try {
+            await CartService.clearCart(user.email)
+            console.log('Cart cleared after successful order')
+          } catch (error) {
+            console.error('Failed to clear cart after order:', error)
+          }
+        }
+        
+        // Clear checkout cart from localStorage
+        localStorage.removeItem("radhika_checkout_cart")
+      }
     }
+    
+    initializeOrderSuccess()
   }, [])
 
   if (!orderData) {
