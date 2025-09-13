@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, User, Shield, Mail, Lock, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { adminAuth } from "@/lib/admin-auth"
+import { googleAuth } from "@/lib/google-auth"
 
 export default function LoginPage() {
   const [userFormData, setUserFormData] = useState({
@@ -160,29 +161,35 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true)
 
-    // Simulate Google OAuth process
-    setTimeout(() => {
-      const googleUser = {
-        email: "user@gmail.com",
-        name: "Google User",
-        picture: "https://via.placeholder.com/40",
-        loginTime: new Date().toISOString(),
-        provider: "google",
+    try {
+      const result = await googleAuth.signInWithGoogle()
+      
+      if (result.success && result.user) {
+        toast({
+          title: "Google login successful!",
+          description: `Welcome ${result.user.name}! Redirecting to dashboard...`,
+        })
+        
+        // Redirect to dashboard after successful login
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1000)
+      } else {
+        toast({
+          title: "Google login failed",
+          description: result.error || "Unable to complete Google sign-in",
+          variant: "destructive",
+        })
       }
-
-      // Store user session
-      const userSession = {
-        user: googleUser,
-      }
-      localStorage.setItem("radhika_user_session", JSON.stringify(userSession))
-
-      setIsGoogleLoading(false)
+    } catch (error) {
       toast({
-        title: "Google login successful!",
-        description: "Welcome to Radhika Electronics via Google.",
+        title: "Google login error",
+        description: "An unexpected error occurred during Google sign-in",
+        variant: "destructive",
       })
-      router.push("/dashboard")
-    }, 2000)
+    } finally {
+      setIsGoogleLoading(false)
+    }
   }
 
   const handleUserInputChange = (field: string, value: string) => {
