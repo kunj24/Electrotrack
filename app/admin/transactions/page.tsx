@@ -15,27 +15,132 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, TrendingUp, TrendingDown } from "lucide-react"
+import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, TrendingUp, TrendingDown, Calendar } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useTransactionStore } from "@/lib/transaction-store"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminTransactions() {
   const { transactions, deleteTransaction } = useTransactionStore()
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [isExporting, setIsExporting] = useState(false)
 
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch =
       transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.category.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = filterType === "all" || transaction.type === filterType
+    
+    // Date range filtering
+    let matchesDateRange = true
+    if (startDate || endDate) {
+      const transactionDate = new Date(transaction.date)
+      if (startDate && endDate) {
+        matchesDateRange = transactionDate >= new Date(startDate) && transactionDate <= new Date(endDate)
+      } else if (startDate) {
+        matchesDateRange = transactionDate >= new Date(startDate)
+      } else if (endDate) {
+        matchesDateRange = transactionDate <= new Date(endDate)
+      }
+    }
 
-    return matchesSearch && matchesFilter
+    return matchesSearch && matchesFilter && matchesDateRange
   }).filter((transaction, index, self) => 
     // Remove duplicates based on ID
     index === self.findIndex(t => t.id === transaction.id)
   )
+
+  const handleExportCSV = async () => {
+    if (filteredTransactions.length === 0) {
+      toast({
+        title: "No data to export",
+        description: "No transactions match your current filters.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsExporting(true)
+    try {
+      const response = await fetch('/api/admin/export-transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactions: filteredTransactions,
+          startDate,
+          endDate,
+          filterType
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Create and download the CSV file
+        const blob = new Blob([data.csvContent], { 
+          type: 'text/csv;charset=utf-8;' 
+        })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', data.filename)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up the URL object
+        URL.revokeObjectURL(url)
+
+        toast({
+          title: "Export successful!",
+          description: `Downloaded ${data.summary.totalTransactions} transactions to ${data.filename}`
+        })
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Failed to export transactions",
+        variant: "destructive"
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const setDateRange = (range: 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days') => {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth()
+
+    switch (range) {
+      case 'thisMonth':
+        setStartDate(new Date(currentYear, currentMonth, 1).toISOString().split('T')[0])
+        setEndDate(new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0])
+        break
+      case 'lastMonth':
+        setStartDate(new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0])
+        setEndDate(new Date(currentYear, currentMonth, 0).toISOString().split('T')[0])
+        break
+      case 'thisYear':
+        setStartDate(new Date(currentYear, 0, 1).toISOString().split('T')[0])
+        setEndDate(new Date(currentYear, 11, 31).toISOString().split('T')[0])
+        break
+      case 'last30Days':
+        setStartDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        setEndDate(now.toISOString().split('T')[0])
+        break
+    }
+  }
 
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to delete this transaction?")) {
@@ -66,22 +171,23 @@ export default function AdminTransactions() {
           {/* Filters and Search */}
           <Card className="mb-6">
             <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search transactions..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+              <div className="flex flex-col space-y-4">
+                {/* Search and Type Filter Row */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        placeholder="Search transactions..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline">
+                      <Button variant="outline" className="w-full sm:w-auto">
                         <Filter className="h-4 w-4 mr-2" />
                         Filter: {filterType === "all" ? "All" : filterType === "income" ? "Income" : "Expenses"}
                       </Button>
@@ -94,10 +200,97 @@ export default function AdminTransactions() {
                       <DropdownMenuItem onClick={() => setFilterType("expense")}>Expenses Only</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
+                </div>
+                
+                {/* Date Range and Export Row */}
+                <div className="flex flex-col space-y-4">
+                  {/* Quick Date Range Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setDateRange('thisMonth')}
+                      className="text-xs"
+                    >
+                      This Month
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setDateRange('lastMonth')}
+                      className="text-xs"
+                    >
+                      Last Month
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setDateRange('last30Days')}
+                      className="text-xs"
+                    >
+                      Last 30 Days
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setDateRange('thisYear')}
+                      className="text-xs"
+                    >
+                      This Year
+                    </Button>
+                  </div>
+                  
+                  {/* Custom Date Range and Export */}
+                  <div className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                      <div className="flex-1">
+                        <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+                          From Date
+                        </label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+                          To Date
+                        </label>
+                        <Input
+                          id="endDate"
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setStartDate("")
+                          setEndDate("")
+                        }}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Clear Dates
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleExportCSV}
+                        disabled={isExporting || filteredTransactions.length === 0}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        {isExporting ? "Exporting..." : "Export CSV"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -129,7 +322,22 @@ export default function AdminTransactions() {
                       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                       .map((transaction, index) => (
                         <TableRow key={`${transaction.id}-${index}`}>
-                          <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {new Date(transaction.date).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit', 
+                                year: 'numeric'
+                              })}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(transaction.createdAt).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </div>
+                          </TableCell>
                           <TableCell className="font-medium">{transaction.description}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{transaction.category}</Badge>

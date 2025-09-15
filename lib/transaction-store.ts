@@ -106,13 +106,14 @@ class TransactionStore {
     paymentMethod: string
     customer: string
     orderId: string
+    orderDate?: string // Make order date optional with current date as fallback
   }): Transaction {
     const transaction = this.addTransaction({
       description: `${orderData.description} - ${orderData.customer}`,
       amount: orderData.amount,
       category: "Online Sales",
       type: "income",
-      date: new Date().toISOString().split("T")[0],
+      date: orderData.orderDate || new Date().toISOString().split("T")[0], // Use provided date or current date
       notes: `Order ID: ${orderData.orderId}, Payment: ${orderData.paymentMethod}, Customer: ${orderData.customer}`,
     })
     return transaction

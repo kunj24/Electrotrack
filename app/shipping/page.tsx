@@ -218,7 +218,9 @@ export default function ShippingPage() {
         })
       })
 
-      // Add each cart item as a separate sale in admin system
+      // Add each cart item as a separate sale in admin system with actual order date
+      const orderDate = new Date().toISOString().split("T")[0] // Current date for the order
+      
       cartData.items.forEach((item) => {
         for (let i = 0; i < item.quantity; i++) {
           addOnlineSale({
@@ -228,6 +230,7 @@ export default function ShippingPage() {
             paymentMethod: shippingData.paymentMethod === "cod" ? "COD" : "Online",
             customer: shippingData.fullName,
             orderId: `ORD${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            orderDate: orderDate // Pass the actual order date
           })
         }
       })

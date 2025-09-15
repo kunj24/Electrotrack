@@ -10,6 +10,7 @@ export function useAdminIntegration() {
     paymentMethod: string
     customer: string
     orderId: string
+    orderDate?: string // Add optional order date
   }) => {
     try {
       const transaction = transactionStore.addOnlineSale(orderData)
