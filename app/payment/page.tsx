@@ -7,10 +7,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CreditCard, Wallet, Building2, Smartphone, Shield, AlertCircle } from "lucide-react"
+import { 
+  CreditCard, 
+  Wallet, 
+  Building2, 
+  Smartphone, 
+  Shield, 
+  AlertCircle,
+  QrCode,
+  Banknote
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { userAuth } from "@/lib/user-auth"
 
@@ -39,36 +47,62 @@ declare global {
 
 export default function PaymentPage() {
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState("razorpay")
+  const [paymentMethod, setPaymentMethod] = useState("cards")
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
-    // Check login status
-    const loggedIn = userAuth.isLoggedIn()
-    const user = userAuth.getCurrentUser()
-    setIsLoggedIn(loggedIn)
-    setCurrentUser(user)
+    // Load Razorpay script
+    const loadRazorpayScript = () => {
+      return new Promise((resolve) => {
+        const script = document.createElement('script')
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+        script.onload = () => {
+          setRazorpayLoaded(true)
+          resolve(true)
+        }
+        script.onerror = () => {
+          console.error('Failed to load Razorpay script')
+          resolve(false)
+        }
+        document.body.appendChild(script)
+      })
+    }
 
-    if (!loggedIn) {
+    // Check if Razorpay is already loaded
+    if (typeof window !== 'undefined') {
+      if (window.Razorpay) {
+        setRazorpayLoaded(true)
+      } else {
+        loadRazorpayScript()
+      }
+    }
+
+    // Check login status
+    const user = userAuth.getCurrentUser()
+    if (!user) {
       toast({
-        title: "Login required",
-        description: "Please login to make a payment.",
+        title: "Please log in",
+        description: "You need to be logged in to make a payment.",
         variant: "destructive",
       })
       router.push("/login")
       return
     }
 
-    // Load checkout data from localStorage
-    const checkoutDataString = localStorage.getItem("radhika_checkout_cart")
-    if (!checkoutDataString) {
+    setCurrentUser(user)
+    setIsLoggedIn(true)
+
+    // Load checkout data
+    const savedCheckoutData = localStorage.getItem("radhika_checkout_cart")
+    if (!savedCheckoutData) {
       toast({
-        title: "No cart data",
-        description: "Please add items to cart and try again.",
+        title: "No items found",
+        description: "Please add items to your cart first.",
         variant: "destructive",
       })
       router.push("/cart")
@@ -76,37 +110,36 @@ export default function PaymentPage() {
     }
 
     try {
-      const data = JSON.parse(checkoutDataString)
-      setCheckoutData(data)
+      const checkoutData = JSON.parse(savedCheckoutData)
+      setCheckoutData(checkoutData)
     } catch (error) {
+      console.error("Error parsing checkout data:", error)
       toast({
-        title: "Invalid cart data",
-        description: "Please restart the checkout process.",
+        title: "Error loading checkout data",
+        description: "Please try again from your cart.",
         variant: "destructive",
       })
       router.push("/cart")
-    }
-
-    // Load Razorpay script
-    const script = document.createElement("script")
-    script.src = "https://checkout.razorpay.com/v1/checkout.js"
-    script.async = true
-    document.body.appendChild(script)
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script)
-      }
     }
   }, [router, toast])
 
   const processRazorpayPayment = async () => {
     if (!checkoutData || !currentUser) return
 
+    // Check if Razorpay script is loaded
+    if (!razorpayLoaded || !window.Razorpay) {
+      toast({
+        title: "Payment system loading",
+        description: "Please wait for the payment system to load and try again.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsProcessing(true)
 
     try {
-      // Create order on our backend
+      // Create order on our backend with enhanced options
       const response = await fetch('/api/payment/razorpay', {
         method: 'POST',
         headers: {
@@ -116,6 +149,12 @@ export default function PaymentPage() {
           amount: checkoutData.total,
           currency: 'INR',
           userId: currentUser.email,
+          preferredMethod: paymentMethod,
+          customerInfo: {
+            name: currentUser.name || currentUser.email.split('@')[0],
+            email: currentUser.email,
+            contact: currentUser.phone || ''
+          },
           orderDetails: {
             items: checkoutData.items,
             subtotal: checkoutData.subtotal,
@@ -132,7 +171,7 @@ export default function PaymentPage() {
         throw new Error(data.error || 'Failed to create payment order')
       }
 
-      // Initialize Razorpay
+      // Enhanced Razorpay options with multiple payment methods
       const options = {
         key: data.key,
         amount: data.amount,
@@ -140,6 +179,22 @@ export default function PaymentPage() {
         name: 'Radhika Electronics',
         description: 'Purchase from Radhika Electronics',
         order_id: data.orderId,
+        prefill: {
+          name: currentUser.name || currentUser.email.split('@')[0],
+          email: currentUser.email,
+          contact: currentUser.phone || ''
+        },
+        theme: {
+          color: '#2563eb'
+        },
+        method: {
+          card: paymentMethod === 'cards',
+          netbanking: paymentMethod === 'netbanking',
+          upi: paymentMethod === 'upi',
+          wallet: paymentMethod === 'wallet',
+          emi: false,
+          paylater: false
+        },
         handler: async function (response: any) {
           try {
             // Verify payment on backend
@@ -152,55 +207,44 @@ export default function PaymentPage() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                userId: currentUser.email
+                userId: currentUser.email,
               }),
             })
 
             const verifyData = await verifyResponse.json()
 
             if (verifyData.success) {
-              // Clear cart after successful payment
-              await fetch('/api/user/cart', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userId: currentUser.email,
-                  action: 'clear_cart'
-                })
-              })
-
               // Clear checkout data
               localStorage.removeItem("radhika_checkout_cart")
 
               toast({
                 title: "Payment successful!",
-                description: "Your order has been placed successfully.",
+                description: `Order ${verifyData.order.orderId} has been placed successfully.`,
               })
-
-              router.push("/order-success")
+              
+              // Redirect to success page with order details
+              router.push(`/order-success?orderId=${verifyData.order.orderId}&paymentId=${verifyData.order.paymentId}`)
             } else {
               throw new Error(verifyData.error || 'Payment verification failed')
             }
-          } catch (error: any) {
+          } catch (verifyError: any) {
+            console.error('Payment verification error:', verifyError)
             toast({
               title: "Payment verification failed",
-              description: error.message,
+              description: verifyError.message,
               variant: "destructive",
             })
-          } finally {
-            setIsProcessing(false)
           }
-        },
-        prefill: {
-          name: currentUser.name,
-          email: currentUser.email,
-        },
-        theme: {
-          color: '#3B82F6'
+          setIsProcessing(false)
         },
         modal: {
           ondismiss: function() {
             setIsProcessing(false)
+            toast({
+              title: "Payment cancelled",
+              description: "You cancelled the payment process.",
+              variant: "destructive",
+            })
           }
         }
       }
@@ -209,6 +253,7 @@ export default function PaymentPage() {
       rzp.open()
 
     } catch (error: any) {
+      console.error('Payment error:', error)
       toast({
         title: "Payment failed",
         description: error.message,
@@ -219,15 +264,7 @@ export default function PaymentPage() {
   }
 
   const handlePayment = async () => {
-    if (paymentMethod === "razorpay") {
-      await processRazorpayPayment()
-    } else {
-      toast({
-        title: "Coming soon",
-        description: "This payment method will be available soon.",
-        variant: "destructive",
-      })
-    }
+    await processRazorpayPayment()
   }
 
   if (!checkoutData || !isLoggedIn) {
@@ -249,7 +286,7 @@ export default function PaymentPage() {
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-800 mb-8">Payment</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-8">Complete Payment</h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Payment Methods */}
@@ -258,74 +295,121 @@ export default function PaymentPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <CreditCard className="h-5 w-5" />
-                    <span>Payment Method</span>
+                    <span>Choose Payment Method</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-4">
                   <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <div className="space-y-4">
-                      {/* Razorpay */}
-                      <div className="flex items-center space-x-3 p-4 border rounded-lg">
-                        <RadioGroupItem value="razorpay" id="razorpay" />
-                        <Label htmlFor="razorpay" className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <Wallet className="h-5 w-5 text-blue-600" />
-                              <div>
-                                <p className="font-medium">Razorpay</p>
-                                <p className="text-sm text-gray-600">Credit/Debit Card, Net Banking, UPI, Wallets</p>
-                              </div>
+                    
+                    {/* Credit/Debit Cards */}
+                    <div className="flex items-center space-x-3 p-4 border-2 rounded-lg hover:border-blue-300 transition-colors">
+                      <RadioGroupItem value="cards" id="cards" />
+                      <Label htmlFor="cards" className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <CreditCard className="h-6 w-6 text-blue-600" />
+                            <div>
+                              <p className="font-semibold">Credit/Debit Cards</p>
+                              <p className="text-sm text-gray-600">Visa, Mastercard, RuPay, Amex</p>
                             </div>
-                            <Shield className="h-5 w-5 text-green-600" />
                           </div>
-                        </Label>
-                      </div>
-
-                      {/* UPI (Coming Soon) */}
-                      <div className="flex items-center space-x-3 p-4 border rounded-lg opacity-50">
-                        <RadioGroupItem value="upi" id="upi" disabled />
-                        <Label htmlFor="upi" className="flex-1 cursor-not-allowed">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <Smartphone className="h-5 w-5 text-purple-600" />
-                              <div>
-                                <p className="font-medium">UPI Direct</p>
-                                <p className="text-sm text-gray-600">Pay using Google Pay, PhonePe, Paytm</p>
-                              </div>
-                            </div>
-                            <span className="text-xs bg-gray-200 px-2 py-1 rounded">Coming Soon</span>
+                          <div className="flex space-x-1">
+                            <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">VISA</div>
+                            <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center font-bold">MC</div>
                           </div>
-                        </Label>
-                      </div>
-
-                      {/* Net Banking (Coming Soon) */}
-                      <div className="flex items-center space-x-3 p-4 border rounded-lg opacity-50">
-                        <RadioGroupItem value="netbanking" id="netbanking" disabled />
-                        <Label htmlFor="netbanking" className="flex-1 cursor-not-allowed">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <Building2 className="h-5 w-5 text-green-600" />
-                              <div>
-                                <p className="font-medium">Net Banking</p>
-                                <p className="text-sm text-gray-600">All major banks supported</p>
-                              </div>
-                            </div>
-                            <span className="text-xs bg-gray-200 px-2 py-1 rounded">Coming Soon</span>
-                          </div>
-                        </Label>
-                      </div>
+                        </div>
+                      </Label>
                     </div>
+
+                    {/* UPI */}
+                    <div className="flex items-center space-x-3 p-4 border-2 rounded-lg hover:border-purple-300 transition-colors">
+                      <RadioGroupItem value="upi" id="upi" />
+                      <Label htmlFor="upi" className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <QrCode className="h-6 w-6 text-purple-600" />
+                            <div>
+                              <p className="font-semibold">UPI</p>
+                              <p className="text-sm text-gray-600">Google Pay, PhonePe, Paytm, BHIM</p>
+                            </div>
+                          </div>
+                          <div className="text-green-600 font-semibold text-sm">INSTANT</div>
+                        </div>
+                      </Label>
+                    </div>
+
+                    {/* Net Banking */}
+                    <div className="flex items-center space-x-3 p-4 border-2 rounded-lg hover:border-green-300 transition-colors">
+                      <RadioGroupItem value="netbanking" id="netbanking" />
+                      <Label htmlFor="netbanking" className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Building2 className="h-6 w-6 text-green-600" />
+                            <div>
+                              <p className="font-semibold">Net Banking</p>
+                              <p className="text-sm text-gray-600">All major banks supported</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-1">
+                            <div className="text-xs bg-gray-100 px-2 py-1 rounded">SBI</div>
+                            <div className="text-xs bg-gray-100 px-2 py-1 rounded">HDFC</div>
+                            <div className="text-xs bg-gray-100 px-2 py-1 rounded">ICICI</div>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+
+                    {/* Wallets */}
+                    <div className="flex items-center space-x-3 p-4 border-2 rounded-lg hover:border-orange-300 transition-colors">
+                      <RadioGroupItem value="wallet" id="wallet" />
+                      <Label htmlFor="wallet" className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Wallet className="h-6 w-6 text-orange-600" />
+                            <div>
+                              <p className="font-semibold">Digital Wallets</p>
+                              <p className="text-sm text-gray-600">Paytm, PhonePe, Amazon Pay</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-1">
+                            <Smartphone className="h-4 w-4 text-blue-600" />
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+
                   </RadioGroup>
 
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                  {/* Security Info */}
+                  <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="flex items-center space-x-2">
-                      <Shield className="h-5 w-5 text-blue-600" />
-                      <p className="text-sm text-blue-800 font-medium">Secure Payment</p>
+                      <Shield className="h-5 w-5 text-green-600" />
+                      <p className="text-sm text-green-800 font-semibold">100% Secure Payment</p>
                     </div>
-                    <p className="text-sm text-blue-700 mt-1">
-                      Your payment information is encrypted and secure. We use industry-standard security measures.
+                    <p className="text-sm text-green-700 mt-1">
+                      Your payment information is encrypted using 256-bit SSL technology. 
+                      All transactions are processed securely through Razorpay.
                     </p>
                   </div>
+
+                  {/* Payment Button */}
+                  <Button
+                    onClick={handlePayment}
+                    disabled={isProcessing}
+                    className="w-full h-12 text-lg font-semibold bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isProcessing ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Processing...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <Banknote className="h-5 w-5" />
+                        <span>Pay ₹{checkoutData.total.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -352,40 +436,33 @@ export default function PaymentPage() {
 
                   <Separator />
 
-                  {/* Pricing */}
+                  {/* Totals */}
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
                       <span>₹{checkoutData.subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Tax (18% GST)</span>
+                      <span>Tax</span>
                       <span>₹{checkoutData.tax.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Shipping</span>
-                      <span>{checkoutData.shipping === 0 ? "Free" : `₹${checkoutData.shipping.toLocaleString()}`}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>Total</span>
-                      <span>₹{checkoutData.total.toLocaleString()}</span>
+                      <span>₹{checkoutData.shipping.toLocaleString()}</span>
                     </div>
                   </div>
 
-                  <Button
-                    onClick={handlePayment}
-                    disabled={isProcessing}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isProcessing ? "Processing..." : `Pay ₹${checkoutData.total.toLocaleString()}`}
-                  </Button>
+                  <Separator />
 
-                  <div className="text-center">
-                    <p className="text-xs text-gray-600">
-                      By clicking "Pay", you agree to our terms and conditions
-                    </p>
+                  <div className="flex justify-between items-center font-semibold text-lg">
+                    <span>Total</span>
+                    <span className="text-blue-600">₹{checkoutData.total.toLocaleString()}</span>
+                  </div>
+
+                  {/* Delivery Info */}
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800">Estimated Delivery</p>
+                    <p className="text-sm text-blue-700">5-7 business days</p>
                   </div>
                 </CardContent>
               </Card>
@@ -393,6 +470,9 @@ export default function PaymentPage() {
           </div>
         </div>
       </div>
+
+      {/* Razorpay Script */}
+      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     </div>
   )
 }
