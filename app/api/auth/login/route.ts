@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       name: user.name,
       email: user.email,
       businessType: user.businessType,
+      emailVerified: user.emailVerified, // Include verification status
+      emailVerifiedAt: user.emailVerifiedAt,
       createdAt: user.createdAt,
       lastLogin: new Date()
     }

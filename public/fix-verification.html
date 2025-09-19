@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Verification Status</title>
+</head>
+<body>
+    <h1>Manual Verification Fix</h1>
+    <div>
+        <input type="email" id="email" placeholder="Enter email address" value="pujandesai450@gmail.com">
+        <button onclick="fixVerification()">Fix Verification Status</button>
+    </div>
+    <div id="result"></div>
+
+    <script>
+        async function fixVerification() {
+            const email = document.getElementById('email').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/auth/manual-verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                resultDiv.innerHTML = 'Error: ' + error.message;
+            }
+        }
+
+        // Auto-run on page load
+        window.onload = () => {
+            fixVerification();
+        };
+    </script>
+</body>
+</html>

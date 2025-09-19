@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
+import { Mail, CheckCircle2, Send, Loader2 } from "lucide-react"
+import PreSignupVerification from "@/components/pre-signup-verification"
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -18,25 +20,33 @@ export default function SignUpPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    businessType: "electronics",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [verificationEmailSent, setVerificationEmailSent] = useState(false)
+  const [isRegistered, setIsRegistered] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [verificationData, setVerificationData] = useState<{
+    email: string
+    name: string
+    verificationToken: string
+  } | null>(null)
   const { toast } = useToast()
+
+  const handleVerificationSuccess = (data: { email: string; name: string; verificationToken: string }) => {
+    setEmailVerified(true)
+    setVerificationData(data)
+    setFormData(prev => ({
+      ...prev,
+      email: data.email,
+      name: data.name
+    }))
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required"
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid"
-    }
-
+    // Password validation only (email and name come from verification)
     if (!formData.password) {
       newErrors.password = "Password is required"
     } else if (formData.password.length < 6) {
@@ -54,40 +64,52 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!emailVerified || !verificationData) {
+      toast({
+        title: "Email verification required",
+        description: "Please verify your email first.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!validateForm()) return
 
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/register', {
+      // Create account with verified email
+      const registerResponse = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
+          name: verificationData.name,
+          email: verificationData.email,
           password: formData.password,
-          businessType: formData.businessType,
+          emailVerified: true, // Email is already verified
+          verificationToken: verificationData.verificationToken,
         }),
       })
 
-      const data = await response.json()
+      const registerData = await registerResponse.json()
 
-      if (response.ok) {
-        toast({
-          title: "Account created successfully!",
-          description: "Welcome to Radhika Electronics. You can now login.",
-        })
-        // Redirect to login page
-        window.location.href = '/login'
-      } else {
+      if (!registerResponse.ok) {
         toast({
           title: "Registration failed",
-          description: data.error || "Something went wrong. Please try again.",
+          description: registerData.error || "Something went wrong. Please try again.",
           variant: "destructive",
         })
+        return
       }
+
+      setIsRegistered(true)
+      toast({
+        title: "Account created successfully! 🎉",
+        description: "Your account has been created and your email is verified. You can now log in.",
+      })
+
     } catch (error) {
       toast({
         title: "Registration failed",
@@ -106,97 +128,176 @@ export default function SignUpPage() {
     }
   }
 
+  const handleResendVerification = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: formData.email })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Verification email sent! 📧",
+          description: "Please check your Gmail inbox for the new verification email.",
+        })
+      } else {
+        toast({
+          title: "Failed to resend",
+          description: data.error || "Please try again later.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Network error",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Show success page if account is created successfully
+  if (isRegistered) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto">
+            <Card>
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <CheckCircle2 className="h-16 w-16 text-green-500" />
+                </div>
+                <CardTitle className="text-2xl font-bold text-green-600">Account Created Successfully!</CardTitle>
+                <CardDescription>Your account has been created and your email is verified</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>
+                    Welcome to Radhika Electronics! Your account for <strong>{verificationData?.email}</strong> 
+                    is ready to use.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-green-800 mb-2">What's Next:</h3>
+                  <ol className="text-green-700 text-sm space-y-1">
+                    <li>1. Your email has been verified ✅</li>
+                    <li>2. Your account is fully activated ✅</li>
+                    <li>3. You can now log in to your account</li>
+                    <li>4. Start shopping at Radhika Electronics!</li>
+                  </ol>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <Link href="/login">
+                    <Button className="w-full">
+                      Go to Login
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-md mx-auto">
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-blue-600">Create Account</CardTitle>
-              <CardDescription>Join Radhika Electronics for the best deals on electronics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    className={errors.name ? "border-red-500" : ""}
-                  />
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-                </div>
+        <div className="max-w-md mx-auto space-y-6">
+          {!emailVerified ? (
+            // Step 1: Email Verification
+            <PreSignupVerification onVerificationSuccess={handleVerificationSuccess} />
+          ) : (
+            // Step 2: Complete Registration
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold text-blue-600">Complete Registration</CardTitle>
+                <CardDescription>
+                  Email verified for <strong>{verificationData?.email}</strong>. 
+                  Now create your password to finish registration.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      className={errors.password ? "border-red-500" : ""}
+                      placeholder="Enter your password"
+                    />
+                    {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                  </div>
 
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    className={errors.email ? "border-red-500" : ""}
-                  />
-                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-                </div>
+                  <div>
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      className={errors.confirmPassword ? "border-red-500" : ""}
+                      placeholder="Confirm your password"
+                    />
+                    {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+                  </div>
 
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    className={errors.password ? "border-red-500" : ""}
-                  />
-                  {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    className={errors.confirmPassword ? "border-red-500" : ""}
-                  />
-                  {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
-                </div>
-
-                <div>
-                  <Label htmlFor="businessType">Business Type</Label>
-                  <Select
-                    value={formData.businessType}
-                    onValueChange={(value) => handleInputChange("businessType", value)}
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-gray-600 mt-1">Currently we only support electronics business</p>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      "Complete Registration"
+                    )}
+                  </Button>
+                </form>
+
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => {
+                      setEmailVerified(false)
+                      setVerificationData(null)
+                    }}
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    Change Email Address
+                  </button>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating Account..." : "Sign Up"}
-                </Button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Already have an account?{" "}
-                  <Link href="/login" className="text-blue-600 hover:underline">
-                    Login here
-                  </Link>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-gray-600">
+                    Already have an account?{" "}
+                    <Link href="/login" className="text-blue-600 hover:underline">
+                      Login here
+                    </Link>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

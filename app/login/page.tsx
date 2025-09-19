@@ -38,6 +38,11 @@ export default function LoginPage() {
   const [isAdminLoading, setIsAdminLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [showAdminCredentials, setShowAdminCredentials] = useState(false)
+  const [emailVerificationState, setEmailVerificationState] = useState<{
+    needsVerification: boolean
+    email: string
+    isResending: boolean
+  }>({ needsVerification: false, email: "", isResending: false })
 
   const router = useRouter()
   const { toast } = useToast()
@@ -45,10 +50,14 @@ export default function LoginPage() {
   const validateUserForm = () => {
     const newErrors: Record<string, string> = {}
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!userFormData.email.trim()) {
       newErrors.email = "Email is required"
-    } else if (!/\S+@\S+\.\S+/.test(userFormData.email)) {
-      newErrors.email = "Email is invalid"
+    } else if (!emailRegex.test(userFormData.email)) {
+      newErrors.email = "Please enter a valid email address"
+    } else if (!userFormData.email.toLowerCase().endsWith('@gmail.com')) {
+      newErrors.email = "Only Gmail addresses (@gmail.com) are supported"
     }
 
     if (!userFormData.password) {
@@ -96,6 +105,21 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
+        // Check if email is verified
+        if (!data.user.emailVerified) {
+          setEmailVerificationState({
+            needsVerification: true,
+            email: userFormData.email,
+            isResending: false
+          })
+          toast({
+            title: "Email verification required ✉️",
+            description: "Please check your Gmail inbox and click the verification link before logging in.",
+            variant: "destructive",
+          })
+          return
+        }
+
         // Store user session
         const userSession = {
           user: {
@@ -134,6 +158,43 @@ export default function LoginPage() {
       })
     } finally {
       setIsUserLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    setEmailVerificationState(prev => ({ ...prev, isResending: true }))
+    
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: emailVerificationState.email })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Verification email sent! 📧",
+          description: "Please check your Gmail inbox for the verification email.",
+        })
+      } else {
+        toast({
+          title: "Failed to resend",
+          description: data.error || "Please try again later.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Network error",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setEmailVerificationState(prev => ({ ...prev, isResending: false }))
     }
   }
 
@@ -259,15 +320,43 @@ export default function LoginPage() {
                         <AlertDescription>{userErrors.general}</AlertDescription>
                       </Alert>
                     )}
+
+                    {/* Email verification notice */}
+                    {emailVerificationState.needsVerification && (
+                      <Alert>
+                        <Mail className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="space-y-2">
+                            <p>Your email address <strong>{emailVerificationState.email}</strong> needs to be verified before you can log in.</p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={handleResendVerification}
+                                disabled={emailVerificationState.isResending}
+                              >
+                                {emailVerificationState.isResending ? "Sending..." : "Resend Verification Email"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEmailVerificationState({ needsVerification: false, email: "", isResending: false })}
+                              >
+                                Dismiss
+                              </Button>
+                            </div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     
                     <div>
-                      <Label htmlFor="user-email">Email Address</Label>
+                      <Label htmlFor="user-email">Gmail Address</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                         <Input
                           id="user-email"
                           type="email"
-                          placeholder="Enter your email"
+                          placeholder="Enter your Gmail address"
                           value={userFormData.email}
                           onChange={(e) => handleUserInputChange("email", e.target.value)}
                           className={`pl-10 ${userErrors.email ? "border-red-500" : ""}`}
@@ -275,6 +364,12 @@ export default function LoginPage() {
                         />
                       </div>
                       {userErrors.email && <p className="text-red-500 text-sm mt-1">{userErrors.email}</p>}
+                      
+                      {/* Email verification notice */}
+                      <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded mt-2">
+                        <Info className="inline h-3 w-3 mr-1" />
+                        Only Gmail addresses (@gmail.com) are supported. Your email must be verified to log in.
+                      </div>
                     </div>
 
                     <div>
@@ -308,10 +403,43 @@ export default function LoginPage() {
                       </Link>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={isUserLoading}>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={isUserLoading}
+                    >
                       {isUserLoading ? "Logging in..." : "Login as Customer"}
                     </Button>
                   </form>
+
+                  {/* Email Verification Status */}
+                  {emailVerificationState.needsVerification && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center mb-2">
+                        <Mail className="h-5 w-5 text-yellow-600 mr-2" />
+                        <h4 className="font-semibold text-yellow-800">Email Verification Required</h4>
+                      </div>
+                      <p className="text-yellow-700 text-sm mb-3">
+                        Your account exists but your email <strong>{emailVerificationState.email}</strong> is not verified yet.
+                      </p>
+                      <div className="space-y-2">
+                        <p className="text-yellow-700 text-xs">
+                          • Check your Gmail inbox for the verification email<br/>
+                          • If the Gmail address doesn't exist, you won't receive any email<br/>
+                          • Click the verification link to activate your account
+                        </p>
+                        <Button 
+                          onClick={handleResendVerification}
+                          disabled={emailVerificationState.isResending}
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2"
+                        >
+                          {emailVerificationState.isResending ? "Sending..." : "Resend Verification Email"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-6">
                     <Separator className="my-4" />
