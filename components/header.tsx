@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ShoppingCart, User, LogOut, Package, Settings, Menu, X, UserCircle } from "lucide-react"
 import { userAuth } from "@/lib/user-auth"
 import { useToast } from "@/hooks/use-toast"
+import { CartService } from "@/lib/cart-service"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -30,15 +31,18 @@ export function Header() {
   const fetchCartCount = async (userEmail: string) => {
     if (isLoadingCart) return // Prevent multiple simultaneous requests
     
+    console.log('fetchCartCount called for user:', userEmail)
     setIsLoadingCart(true)
     try {
-      const response = await fetch(`/api/user/cart?userId=${encodeURIComponent(userEmail)}`)
-      const data = await response.json()
+      const cartItems = await CartService.getCart(userEmail)
+      console.log('Retrieved cart items:', cartItems)
       
-      if (data.success && data.cart) {
-        const totalItems = data.cart.reduce((total: number, item: any) => total + item.quantity, 0)
+      if (cartItems && Array.isArray(cartItems)) {
+        const totalItems = cartItems.reduce((total: number, item: any) => total + (item.quantity || 0), 0)
+        console.log('Total cart items:', totalItems)
         setCartItemCount(totalItems)
       } else {
+        console.log('No cart items found, setting count to 0')
         setCartItemCount(0)
       }
     } catch (error) {
@@ -86,8 +90,10 @@ export function Header() {
 
     // Listen for cart updates
     const handleCartUpdate = () => {
+      console.log('cartUpdated event received in header')
       const user = userAuth.getCurrentUser()
       if (user && user.email) {
+        console.log('Fetching cart count for user:', user.email)
         fetchCartCount(user.email)
       }
     }
