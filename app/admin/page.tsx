@@ -9,13 +9,19 @@ import { BarChart3, CreditCard, DollarSign, TrendingUp, ArrowUpRight, ArrowDownR
 import Link from "next/link"
 import { useTransactionStore } from "@/lib/transaction-store"
 import { adminAuth } from "@/lib/admin-auth"
+import { useMemo } from "react"
 
 export default function AdminDashboard() {
   const { transactions, getStats } = useTransactionStore()
   const currentUser = adminAuth.getCurrentUser()
-  const stats = getStats()
+  
+  // Memoize stats to prevent unnecessary recalculations
+  const stats = useMemo(() => getStats(), [getStats])
 
-  const quickStats = [
+  // Ensure transactions is always an array
+  const safeTransactions = Array.isArray(transactions) ? transactions : []
+
+  const quickStats = useMemo(() => [
     {
       title: "Total Revenue",
       value: `₹${stats.totalRevenue.toLocaleString()}`,
@@ -45,18 +51,26 @@ export default function AdminDashboard() {
     },
     {
       title: "Transactions",
-      value: transactions.length.toString(),
+      value: safeTransactions.length.toString(),
       change: "+23",
       changeType: "positive" as const,
       icon: Activity,
       color: "text-purple-600",
       bgColor: "bg-purple-100",
     },
-  ]
+  ], [stats.totalRevenue, stats.totalExpenses, stats.netProfit, safeTransactions.length])
 
-  const recentTransactions = transactions
+  const recentTransactions = useMemo(() => safeTransactions
+    .filter(transaction => 
+      transaction && 
+      typeof transaction === 'object' &&
+      transaction.id && 
+      transaction.date && 
+      transaction.description &&
+      typeof transaction.amount === 'number'
+    ) // Filter out invalid transactions
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5)
+    .slice(0, 5), [safeTransactions])
 
   return (
     <AdminRouteGuard>
@@ -72,8 +86,8 @@ export default function AdminDashboard() {
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {quickStats.map((stat) => (
-              <Card key={stat.title}>
+            {quickStats.map((stat, index) => (
+              <Card key={`stat-${index}`}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -121,8 +135,8 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {recentTransactions.length > 0 ? (
-                      recentTransactions.map((transaction) => (
-                        <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      recentTransactions.map((transaction, index) => (
+                        <div key={`transaction-${transaction.id}-${index}`} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center space-x-4">
                             <div
                               className={`p-2 rounded-full ${
@@ -140,8 +154,10 @@ export default function AdminDashboard() {
                               )}
                             </div>
                             <div>
-                              <p className="font-medium">{transaction.description}</p>
-                              <p className="text-sm text-gray-500">{new Date(transaction.date).toLocaleDateString()}</p>
+                              <p className="font-medium">{transaction.description || "No description"}</p>
+                              <p className="text-sm text-gray-500">
+                                {transaction.date ? new Date(transaction.date).toLocaleDateString() : "No date"}
+                              </p>
                             </div>
                           </div>
                           <div className="text-right">
@@ -150,10 +166,10 @@ export default function AdminDashboard() {
                                 transaction.type === "income" ? "text-green-600" : "text-red-600"
                               }`}
                             >
-                              {transaction.type === "income" ? "+" : "-"}₹{transaction.amount.toLocaleString()}
+                              {transaction.type === "income" ? "+" : "-"}₹{transaction.amount?.toLocaleString() || "0"}
                             </p>
                             <Badge variant="outline" className="text-xs">
-                              {transaction.category}
+                              {transaction.category || "No category"}
                             </Badge>
                           </div>
                         </div>
