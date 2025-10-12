@@ -271,9 +271,6 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-indigo-600">{data.totalUsers}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Registered users • {data.activeSessions} active sessions
-              </p>
             </CardContent>
           </Card>
         </div>
