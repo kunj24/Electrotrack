@@ -16,7 +16,12 @@ export async function GET(request: NextRequest) {
     const db = await getDb()
     const cartsCollection = db.collection('carts')
 
-    const cart = await cartsCollection.findOne({ userEmail })
+    const cart = await cartsCollection.findOne({ 
+      $or: [
+        { userEmail: userEmail },
+        { userId: userEmail }
+      ]
+    })
 
     if (!cart) {
       return NextResponse.json({

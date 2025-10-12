@@ -22,24 +22,23 @@ export async function POST(request: NextRequest) {
     const cartsCollection = db.collection('carts')
 
     console.log('Performing upsert operation for user:', userEmail)
-    // Upsert the cart (update if exists, create if not)
-    // Set `userId` alongside `userEmail` to remain compatible with older indexes
-    // and avoid E11000 duplicate key errors when a unique index on userId exists.
+    // Use replaceOne with upsert to handle database conflicts properly
+    // This will completely replace the document, avoiding index conflicts
     try {
-      const result = await cartsCollection.updateOne(
-        { userEmail },
+      const result = await cartsCollection.replaceOne(
+        { 
+          $or: [
+            { userEmail: userEmail },
+            { userId: userEmail }
+          ]
+        },
         {
-          $set: {
-            userEmail,
-            // Keep a duplicate userId field for backward compatibility with older code/indexes
-            userId: userEmail,
-            items: items || [],
-            totalAmount: totalAmount || 0,
-            updatedAt: new Date()
-          },
-          $setOnInsert: {
-            createdAt: new Date()
-          }
+          userEmail,
+          userId: userEmail, // Keep for backward compatibility
+          items: items || [],
+          totalAmount: totalAmount || 0,
+          updatedAt: new Date(),
+          createdAt: new Date() // Will be ignored if document exists
         },
         { upsert: true }
       )
@@ -48,16 +47,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Cart saved successfully',
-        cartId: result.upsertedId
+        cartId: result.upsertedId || 'updated'
       })
     } catch (err: any) {
       // Handle duplicate-key specifically to provide a clearer message
       if (err && err.code === 11000) {
-        console.error('Duplicate key error while saving cart (likely userId index conflict):', err)
-        return NextResponse.json({
-          error: 'Cart save failed due to existing conflicting index (duplicate key).',
-          details: err.message
-        }, { status: 500 })
+        console.error('Duplicate key error while saving cart. Attempting to delete and recreate:', err)
+        
+        // Try to delete existing cart and create new one
+        try {
+          await cartsCollection.deleteMany({
+            $or: [
+              { userEmail: userEmail },
+              { userId: userEmail }
+            ]
+          })
+          
+          const insertResult = await cartsCollection.insertOne({
+            userEmail,
+            userId: userEmail,
+            items: items || [],
+            totalAmount: totalAmount || 0,
+            updatedAt: new Date(),
+            createdAt: new Date()
+          })
+          
+          console.log('Cart recreated successfully:', insertResult)
+          return NextResponse.json({
+            success: true,
+            message: 'Cart saved successfully (recreated)',
+            cartId: insertResult.insertedId
+          })
+        } catch (secondError) {
+          console.error('Failed to recreate cart:', secondError)
+          return NextResponse.json({
+            error: 'Cart save failed due to database conflict',
+            details: secondError
+          }, { status: 500 })
+        }
       }
 
       throw err
