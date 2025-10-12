@@ -148,6 +148,15 @@ export default function DashboardPage() {
       return
     }
 
+    if (!product || !product.id || !product.name || typeof product.price !== 'number') {
+      toast({
+        title: "Invalid product",
+        description: "Unable to add this product to cart.",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       // Get current cart
       const currentCart = await CartService.getCart(currentUser.email)
@@ -177,9 +186,11 @@ export default function DashboardPage() {
       }
 
       // Save updated cart
+      console.log('Saving cart for user:', currentUser.email, 'with items:', updatedCart)
       const success = await CartService.saveCart(currentUser.email, updatedCart)
 
       if (success) {
+        console.log('Cart saved successfully, dispatching cartUpdated event')
         toast({
           title: "Added to cart!",
           description: `${product.name} has been added to your cart.`,
@@ -188,7 +199,11 @@ export default function DashboardPage() {
         // Trigger header refresh by dispatching a custom event
         window.dispatchEvent(new CustomEvent('cartUpdated'))
       } else {
-        throw new Error('Failed to save cart')
+        toast({
+          title: "Failed to add to cart",
+          description: "Unable to save cart. Please check your connection and try again.",
+          variant: "destructive",
+        })
       }
     } catch (error: any) {
       console.error('Add to cart error:', error)

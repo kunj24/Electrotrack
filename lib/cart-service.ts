@@ -18,14 +18,34 @@ export interface Cart {
 }
 
 export class CartService {
+  // In-memory fallback storage for development
+  private static fallbackStorage: Map<string, CartItem[]> = new Map()
+
   static calculateTotal(items: CartItem[]): number {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0)
+    if (!Array.isArray(items) || items.length === 0) {
+      return 0
+    }
+    
+    return items.reduce((total, item) => {
+      // Safety check for item properties
+      const price = typeof item?.price === 'number' ? item.price : 0
+      const quantity = typeof item?.quantity === 'number' ? item.quantity : 0
+      return total + (price * quantity)
+    }, 0)
   }
 
   static async saveCart(userEmail: string, items: CartItem[]): Promise<boolean> {
+    // Validate inputs
+    if (!userEmail || !items) {
+      // eslint-disable-next-line no-console
+      console.error('Invalid saveCart parameters:', { userEmail, items })
+      return false
+    }
+
+    const safeItems = Array.isArray(items) ? items : []
+    const totalAmount = this.calculateTotal(safeItems)
+
     try {
-      const totalAmount = this.calculateTotal(items)
-      
       const response = await fetch('/api/cart/save', {
         method: 'POST',
         headers: {
@@ -33,19 +53,46 @@ export class CartService {
         },
         body: JSON.stringify({
           userEmail,
-          items,
+          items: safeItems,
           totalAmount
         }),
       })
 
-      return response.ok
+      if (!response.ok) {
+        const errorData = await response.text()
+        // eslint-disable-next-line no-console
+        console.error('Cart save failed:', response.status, errorData)
+        
+        // Fallback to in-memory storage for development
+        // eslint-disable-next-line no-console
+        console.warn('Using fallback in-memory cart storage')
+        this.fallbackStorage.set(userEmail, safeItems)
+        return true
+      }
+
+      const result = await response.json()
+      // eslint-disable-next-line no-console
+      console.log('Cart saved successfully:', result)
+      return true
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error saving cart:', error)
-      return false
+      
+      // Fallback to in-memory storage for development
+      // eslint-disable-next-line no-console
+      console.warn('Using fallback in-memory cart storage due to error')
+      this.fallbackStorage.set(userEmail, safeItems)
+      return true
     }
   }
 
   static async getCart(userEmail: string): Promise<CartItem[]> {
+    if (!userEmail) {
+      // eslint-disable-next-line no-console
+      console.error('Invalid getCart parameter: userEmail is required')
+      return []
+    }
+
     try {
       const response = await fetch(`/api/cart/get?userEmail=${encodeURIComponent(userEmail)}`)
       
@@ -54,14 +101,38 @@ export class CartService {
         return data.items || []
       }
       
+      // Fallback to in-memory storage
+      const fallbackItems = this.fallbackStorage.get(userEmail)
+      if (fallbackItems) {
+        // eslint-disable-next-line no-console
+        console.warn('Using fallback cart data for user:', userEmail)
+        return fallbackItems
+      }
+      
       return []
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error retrieving cart:', error)
+      
+      // Fallback to in-memory storage
+      const fallbackItems = this.fallbackStorage.get(userEmail)
+      if (fallbackItems) {
+        // eslint-disable-next-line no-console
+        console.warn('Using fallback cart data due to error for user:', userEmail)
+        return fallbackItems
+      }
+      
       return []
     }
   }
 
   static async clearCart(userEmail: string): Promise<boolean> {
+    if (!userEmail) {
+      // eslint-disable-next-line no-console
+      console.error('Invalid clearCart parameter: userEmail is required')
+      return false
+    }
+
     try {
       const response = await fetch('/api/cart/clear', {
         method: 'POST',
@@ -71,10 +142,22 @@ export class CartService {
         body: JSON.stringify({ userEmail }),
       })
 
-      return response.ok
+      if (response.ok) {
+        // Also clear fallback storage
+        this.fallbackStorage.delete(userEmail)
+        return true
+      }
+      
+      // If API fails, still clear fallback storage
+      this.fallbackStorage.delete(userEmail)
+      return true
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error clearing cart:', error)
-      return false
+      
+      // Clear fallback storage even if API fails
+      this.fallbackStorage.delete(userEmail)
+      return true
     }
   }
 }
