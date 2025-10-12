@@ -53,9 +53,12 @@ export default function AdminAnalytics() {
   const { transactions, getStats } = useTransactionStore()
 
   useEffect(() => {
-    processAnalytics()
     fetchUserStats()
-  }, [transactions])
+  }, [])
+
+  useEffect(() => {
+    processAnalytics()
+  }, [transactions, userStats])
 
   const fetchUserStats = async () => {
     try {
