@@ -93,21 +93,23 @@ export default function AdminDashboard() {
                     <div>
                       <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                       <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
-                      <div className="flex items-center mt-2">
-                        {stat.changeType === "positive" ? (
-                          <ArrowUpRight className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <ArrowDownRight className="h-4 w-4 text-red-600" />
-                        )}
-                        <span
-                          className={`text-sm font-medium ml-1 ${
-                            stat.changeType === "positive" ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {stat.change}
-                        </span>
-                        <span className="text-sm text-gray-500 ml-1">from last month</span>
-                      </div>
+                      {stat.change && (
+                        <div className="flex items-center mt-2">
+                          {stat.changeType === "positive" ? (
+                            <ArrowUpRight className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <ArrowDownRight className="h-4 w-4 text-red-600" />
+                          )}
+                          <span
+                            className={`text-sm font-medium ml-1 ${
+                              stat.changeType === "positive" ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {stat.change}
+                          </span>
+                          <span className="text-sm text-gray-500 ml-1">from last month</span>
+                        </div>
+                      )}
                     </div>
                     <div className={`p-3 rounded-full ${stat.bgColor}`}>
                       <stat.icon className={`h-6 w-6 ${stat.color}`} />
