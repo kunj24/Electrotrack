@@ -7,12 +7,12 @@ import { Footer } from "@/components/footer"
 
 export default function HomePage() {
   const categories = [
-    { name: "Fans", icon: Fan, count: "25+ Models" },
-    { name: "TVs", icon: Tv, count: "15+ Models" },
-    { name: "Air Conditioners", icon: AirVent, count: "20+ Models" },
-    { name: "Coolers", icon: Waves, count: "12+ Models" },
-    { name: "Mobile Phones", icon: Smartphone, count: "30+ Models" },
-    { name: "Laptops", icon: Laptop, count: "18+ Models" },
+    { name: "Fans", icon: Fan },
+    { name: "TVs", icon: Tv },
+    { name: "Air Conditioners", icon: AirVent },
+    { name: "Coolers", icon: Waves },
+    { name: "Mobile Phones", icon: Smartphone },
+    { name: "Laptops", icon: Laptop },
   ]
 
   return (
@@ -55,7 +55,6 @@ export default function HomePage() {
                 <CardContent className="p-6 text-center">
                   <category.icon className="h-12 w-12 text-blue-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold mb-2">{category.name}</h3>
-                  <p className="text-gray-600">{category.count}</p>
                 </CardContent>
               </Card>
             ))}
