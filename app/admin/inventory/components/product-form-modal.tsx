@@ -70,7 +70,6 @@ export function ProductFormModal({
   // Form state
   const [formData, setFormData] = useState({
     name: '',
-    sku: '',
     description: '',
     price: 0,
     originalPrice: 0,
@@ -110,7 +109,6 @@ export function ProductFormModal({
     if (product && open) {
       setFormData({
         name: product.name || '',
-        sku: product.sku || '',
         description: product.description || '',
         price: product.price || 0,
         originalPrice: product.originalPrice || 0,
@@ -135,7 +133,6 @@ export function ProductFormModal({
       // Reset form for new product
       setFormData({
         name: '',
-        sku: '',
         description: '',
         price: 0,
         originalPrice: 0,
@@ -166,7 +163,6 @@ export function ProductFormModal({
     const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) newErrors.name = 'Product name is required'
-    if (!formData.sku.trim()) newErrors.sku = 'SKU is required'
     if (!formData.description.trim()) newErrors.description = 'Description is required'
     if (formData.price <= 0) newErrors.price = 'Price must be greater than 0'
     if (formData.quantity < 0) newErrors.quantity = 'Quantity cannot be negative'
@@ -174,12 +170,6 @@ export function ProductFormModal({
     if (formData.minStockLevel < 0) newErrors.minStockLevel = 'Min stock level cannot be negative'
     if (formData.maxStockLevel <= formData.minStockLevel) {
       newErrors.maxStockLevel = 'Max stock level must be greater than min stock level'
-    }
-
-    // SKU format validation
-    const skuRegex = /^[A-Za-z0-9_-]{3,50}$/
-    if (formData.sku && !skuRegex.test(formData.sku)) {
-      newErrors.sku = 'SKU must be 3-50 characters, alphanumeric with hyphens/underscores only'
     }
 
     setErrors(newErrors)
@@ -376,23 +366,6 @@ export function ProductFormModal({
                         <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
                           <AlertCircle className="h-3 w-3" />
                           {errors.name}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="sku">SKU *</Label>
-                      <Input
-                        id="sku"
-                        value={formData.sku}
-                        onChange={(e) => handleInputChange('sku', e.target.value.toUpperCase())}
-                        placeholder="Enter SKU (e.g., ELEC-001)"
-                        className={errors.sku ? 'border-red-500' : ''}
-                      />
-                      {errors.sku && (
-                        <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.sku}
                         </p>
                       )}
                     </div>

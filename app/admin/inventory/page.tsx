@@ -570,14 +570,6 @@ export default function AdminInventoryPage() {
                         </TableHead>
                         <TableHead
                           className="cursor-pointer hover:bg-gray-50"
-                          onClick={() => handleSort('sku')}
-                        >
-                          SKU {filters.sortBy === 'sku' && (
-                            filters.sortOrder === 'asc' ? '↑' : '↓'
-                          )}
-                        </TableHead>
-                        <TableHead
-                          className="cursor-pointer hover:bg-gray-50"
                           onClick={() => handleSort('category')}
                         >
                           Category {filters.sortBy === 'category' && (
@@ -631,9 +623,6 @@ export default function AdminInventoryPage() {
                                 </div>
                               </div>
                             </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {product.sku}
                           </TableCell>
                           <TableCell>
                             <div>

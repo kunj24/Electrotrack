@@ -203,10 +203,6 @@ export function StockAdjustmentModal({
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">SKU:</span>
-                <span className="ml-2 font-mono">{product.sku}</span>
-              </div>
-              <div>
                 <span className="text-gray-600">Current Stock:</span>
                 <span className="ml-2 font-semibold">{product.quantity}</span>
               </div>
