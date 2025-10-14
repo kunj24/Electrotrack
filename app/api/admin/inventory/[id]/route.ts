@@ -30,7 +30,7 @@ function verifyAdminRole(request: NextRequest): { isValid: boolean; error?: stri
 // GET /api/admin/inventory/[id] - Get single product
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin access
@@ -39,7 +39,7 @@ export async function GET(
       return NextResponse.json({ error: authCheck.error }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
@@ -85,7 +85,7 @@ export async function GET(
 // PUT /api/admin/inventory/[id] - Update product
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin access
@@ -94,7 +94,7 @@ export async function PUT(
       return NextResponse.json({ error: authCheck.error }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
@@ -214,7 +214,7 @@ export async function PUT(
 // DELETE /api/admin/inventory/[id] - Soft delete product
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin access
@@ -223,7 +223,7 @@ export async function DELETE(
       return NextResponse.json({ error: authCheck.error }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
@@ -232,6 +232,7 @@ export async function DELETE(
 
     const db = await getDb()
     const productsCollection = db.collection<Product>('products')
+    const inventoryCollection = db.collection('inventory')
 
     // Check if product exists and is not already deleted
     const existingProduct = await productsCollection.findOne({
@@ -259,6 +260,9 @@ export async function DELETE(
     if (updateResult.matchedCount === 0) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
+
+    // Also remove from inventory collection to keep it in sync
+    await inventoryCollection.deleteOne({ sku: existingProduct.sku })
 
     return NextResponse.json({
       message: 'Product deleted successfully'
