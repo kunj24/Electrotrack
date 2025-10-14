@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
     const products = [
       {
         name: "Crompton HighFlo 1200mm Ceiling Fan",
-        sku: "CRO-FAN-1200-001",
         category: "Fans",
         brand: "Crompton",
         price: 2299,
@@ -41,7 +40,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Havells Efficiencia 400mm Table Fan",
-        sku: "HAV-TBL-400-001",
         category: "Fans",
         brand: "Havells",
         price: 1899,
@@ -63,7 +61,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Usha Mist Air Icy 400mm Table Fan",
-        sku: "USH-TBL-400-001",
         category: "Fans",
         brand: "Usha",
         price: 2199,
@@ -85,7 +82,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: 'Mi 32" HD Ready Smart LED TV',
-        sku: "MI-TV-32-HD-001",
         category: "Televisions",
         brand: "Mi",
         price: 13999,
@@ -107,7 +103,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Voltas 1 Ton 3 Star Split AC",
-        sku: "VOL-AC-1.0-SPL-001",
         category: "Air Conditioners",
         brand: "Voltas",
         price: 27999,
@@ -129,7 +124,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Carrier 2 Ton 3 Star Inverter Split AC",
-        sku: "CAR-AC-2.0-INV-001",
         category: "Air Conditioners",
         brand: "Carrier",
         price: 45999,
@@ -151,7 +145,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Blue Star 1.5 Ton 5 Star Window AC",
-        sku: "BLS-AC-1.5-WIN-001",
         category: "Air Conditioners",
         brand: "Blue Star",
         price: 29999,
@@ -173,7 +166,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Crompton Ozone 88L Desert Cooler",
-        sku: "CRO-CLR-88L-001",
         category: "Coolers",
         brand: "Crompton",
         price: 11999,
@@ -195,7 +187,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Orient Electric 30L Personal Cooler",
-        sku: "ORI-CLR-30L-001",
         category: "Coolers",
         brand: "Orient Electric",
         price: 4999,
@@ -217,7 +208,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Kenstar 60L Desert Cooler",
-        sku: "KEN-CLR-60L-001",
         category: "Coolers",
         brand: "Kenstar",
         price: 7999,
@@ -239,7 +229,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Anchor Roma Fan Dimmer Regulator",
-        sku: "ANC-REG-DIM-001",
         category: "Regulators",
         brand: "Anchor",
         price: 349,
@@ -261,7 +250,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Anchor 16A Heavy Duty Extension Board",
-        sku: "ANC-EXT-16A-001",
         category: "Accessories",
         brand: "Anchor",
         price: 599,
@@ -283,7 +271,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Havells Crabtree 6A Socket",
-        sku: "HAV-SOC-6A-001",
         category: "Accessories",
         brand: "Havells",
         price: 199,
@@ -305,7 +292,6 @@ export async function POST(request: NextRequest) {
       },
       {
         name: "Philips 20W LED Tube Light",
-        sku: "PHI-LED-20W-001",
         category: "Accessories",
         brand: "Philips",
         price: 299,
