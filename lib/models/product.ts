@@ -12,7 +12,6 @@ export enum ProductStatus {
 // Base product schema for validation
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required').max(200, 'Name too long'),
-  sku: z.string().min(1, 'SKU is required').max(50, 'SKU too long'),
   description: z.string().min(1, 'Description is required').max(2000, 'Description too long'),
   price: z.number().positive('Price must be positive').max(999999.99, 'Price too high'),
   originalPrice: z.number().positive().optional(),
@@ -60,7 +59,6 @@ export interface Product {
   _id?: ObjectId
   id?: string
   name: string
-  sku: string
   description: string
   price: number
   originalPrice?: number
@@ -96,7 +94,6 @@ export interface StockMovement {
   _id?: ObjectId
   id?: string
   productId: string
-  productSku: string
   type: 'in' | 'out' | 'adjustment' | 'sale' | 'return'
   quantity: number
   previousQuantity: number
@@ -140,12 +137,6 @@ export interface ProductStats {
 }
 
 // Validation helper functions
-export function validateSKU(sku: string, excludeId?: string): boolean {
-  // SKU format: 3-50 characters, alphanumeric with hyphens/underscores
-  const skuRegex = /^[A-Za-z0-9_-]{3,50}$/
-  return skuRegex.test(sku)
-}
-
 export function isLowStock(product: Product): boolean {
   return product.quantity <= product.minStockLevel
 }
@@ -163,7 +154,6 @@ export function calculateDiscountPercentage(product: Product): number {
 
 // Database indexes for MongoDB
 export const productIndexes = [
-  { key: { sku: 1 }, unique: true },
   { key: { name: 1 } },
   { key: { category: 1, subcategory: 1 } },
   { key: { status: 1 } },
@@ -171,7 +161,7 @@ export const productIndexes = [
   { key: { quantity: 1 } },
   { key: { price: 1 } },
   { key: { deletedAt: 1 }, sparse: true },
-  { key: { name: 'text', description: 'text', sku: 'text' } }
+  { key: { name: 'text', description: 'text' } }
 ]
 
 export const stockMovementIndexes = [
