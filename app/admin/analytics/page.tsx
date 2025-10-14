@@ -6,13 +6,13 @@ import { AdminHeader } from "@/components/admin-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users, BarChart3, LineChart, PieChart } from "lucide-react"
-import { 
-  LineChart as RechartsLineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart as RechartsLineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart as RechartsPieChart,
   Pie,
@@ -21,12 +21,11 @@ import {
   Bar,
   Legend
 } from 'recharts'
-import { useTransactionStore } from "@/lib/transaction-store"
 
 // Chart colors
 const COLORS = {
   revenue: '#10b981',
-  expenses: '#ef4444', 
+  expenses: '#ef4444',
   profit: '#3b82f6'
 }
 
@@ -36,7 +35,7 @@ interface AnalyticsData {
   totalRevenue: number
   totalExpenses: number
   totalProfit: number
-  totalOrders: number 
+  totalOrders: number
   totalProducts: number
   totalUsers: number
   activeSessions: number
@@ -50,72 +49,53 @@ export default function AdminAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [userStats, setUserStats] = useState({ totalUsers: 0, activeSessions: 0 })
-  const { transactions, getStats } = useTransactionStore()
 
   useEffect(() => {
     fetchUserStats()
+    fetchAnalytics()
   }, [])
 
-  useEffect(() => {
-    processAnalytics()
-  }, [transactions, userStats])
-
-  const fetchUserStats = async () => {
+  const fetchAnalytics = async () => {
     try {
-      const response = await fetch('/api/admin/user-stats')
-      if (response.ok) {
-        const stats = await response.json()
-        setUserStats({
-          totalUsers: stats.totalUsers,
-          activeSessions: stats.activeSessions
-        })
+      setLoading(true)
+      const response = await fetch('/api/admin/analytics')
+      if (!response.ok) throw new Error('Failed to fetch analytics')
+      const result = await response.json()
+
+      if (result.success && result.analytics) {
+        const analytics = result.analytics
+
+        // Generate chart data from API data
+        const chartData = [
+          { name: 'Revenue', value: analytics.summary.totalRevenue, color: COLORS.revenue },
+          { name: 'Expenses', value: analytics.summary.totalExpenses, color: COLORS.expenses },
+          { name: 'Profit', value: analytics.summary.netProfit, color: COLORS.profit }
+        ]
+
+        // Generate pie chart data
+        const pieData = [
+          { name: 'Revenue', value: analytics.summary.totalRevenue, fill: COLORS.revenue },
+          { name: 'Expenses', value: analytics.summary.totalExpenses, fill: COLORS.expenses }
+        ]
+
+        const analyticsData: AnalyticsData = {
+          totalRevenue: analytics.summary.totalRevenue,
+          totalExpenses: analytics.summary.totalExpenses,
+          totalProfit: analytics.summary.netProfit,
+          totalOrders: analytics.summary.totalOrders,
+          totalProducts: analytics.summary.totalProducts || 0,
+          totalUsers: userStats.totalUsers,
+          activeSessions: userStats.activeSessions,
+          recentTransactions: [],
+          chartData,
+          pieData,
+          monthlyData: analytics.chartData || []
+        }
+
+        setData(analyticsData)
       }
     } catch (error) {
-      console.error('Error fetching user stats:', error)
-    }
-  }
-
-  const processAnalytics = () => {
-    try {
-      const stats = getStats()
-      
-      // Generate chart data
-      const chartData = [
-        { name: 'Revenue', value: stats.totalRevenue, color: COLORS.revenue },
-        { name: 'Expenses', value: stats.totalExpenses, color: COLORS.expenses },
-        { name: 'Profit', value: stats.netProfit, color: COLORS.profit }
-      ]
-
-      // Generate pie chart data
-      const pieData = [
-        { name: 'Revenue', value: stats.totalRevenue, fill: COLORS.revenue },
-        { name: 'Expenses', value: stats.totalExpenses, fill: COLORS.expenses }
-      ]
-
-      // Generate monthly trend data (last 6 months)
-      const monthlyData = generateMonthlyTrends(transactions)
-      
-      const analyticsData: AnalyticsData = {
-        totalRevenue: stats.totalRevenue,
-        totalExpenses: stats.totalExpenses,
-        totalProfit: stats.netProfit,
-        totalOrders: transactions.filter(t => t.type === 'income').length,
-        totalProducts: 0,
-        totalUsers: userStats.totalUsers,
-        activeSessions: userStats.activeSessions,
-        recentTransactions: transactions.slice(0, 5).map(t => ({
-          customerEmail: t.notes?.includes('Customer:') ? t.notes.split('Customer: ')[1]?.split(',')[0] : 'Store Transaction',
-          totalAmount: t.amount,
-          createdAt: t.date
-        })),
-        chartData,
-        pieData,
-        monthlyData
-      }
-      
-      setData(analyticsData)
-    } catch (error) {
-      console.error('Analytics processing error:', error)
+      console.error('Analytics fetch error:', error)
       setData({
         totalRevenue: 0,
         totalExpenses: 0,
@@ -134,44 +114,18 @@ export default function AdminAnalytics() {
     }
   }
 
-  const generateMonthlyTrends = (transactions: any[]) => {
-    const monthlyStats: { [key: string]: { revenue: number; expenses: number; profit: number; month: string } } = {}
-    
-    // Initialize last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date()
-      date.setMonth(date.getMonth() - i)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const monthName = date.toLocaleDateString('en-US', { month: 'short' })
-      monthlyStats[monthKey] = { revenue: 0, expenses: 0, profit: 0, month: monthName }
-    }
-    
-    transactions.forEach(transaction => {
-      const date = new Date(transaction.date)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      
-      if (monthlyStats[monthKey]) {
-        if (transaction.type === 'income') {
-          monthlyStats[monthKey].revenue += transaction.amount
-        } else {
-          monthlyStats[monthKey].expenses += transaction.amount
-        }
-        monthlyStats[monthKey].profit = monthlyStats[monthKey].revenue - monthlyStats[monthKey].expenses
-      }
-    })
-    
-    return Object.values(monthlyStats)
-  }
-
-  const fetchAnalytics = async () => {
-    // Fallback API call if needed
+  const fetchUserStats = async () => {
     try {
-      const response = await fetch('/api/admin/analytics')
-      if (!response.ok) throw new Error('Failed to fetch analytics')
-      const analyticsData = await response.json()
-      // Merge with processed data if needed
+      const response = await fetch('/api/admin/user-stats')
+      if (response.ok) {
+        const stats = await response.json()
+        setUserStats({
+          totalUsers: stats.totalUsers,
+          activeSessions: stats.activeSessions
+        })
+      }
     } catch (error) {
-      console.error('Analytics fetch error:', error)
+      console.error('Error fetching user stats:', error)
     }
   }
 
@@ -204,7 +158,7 @@ export default function AdminAnalytics() {
       <AdminHeader />
       <div className="p-6 space-y-6">
         <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-        
+
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           <Card className="shadow-md hover:shadow-lg transition-shadow">
@@ -291,21 +245,21 @@ export default function AdminAnalytics() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis 
-                      dataKey="name" 
+                    <XAxis
+                      dataKey="name"
                       fontSize={12}
                       tick={{ fill: '#666' }}
                     />
-                    <YAxis 
+                    <YAxis
                       tickFormatter={(value) => `₹${(value/1000).toFixed(0)}K`}
                       fontSize={12}
                       tick={{ fill: '#666' }}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
                       labelStyle={{ color: '#000', fontWeight: 'bold' }}
-                      contentStyle={{ 
-                        backgroundColor: '#fff', 
+                      contentStyle={{
+                        backgroundColor: '#fff',
                         border: '1px solid #ccc',
                         borderRadius: '8px',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
@@ -340,7 +294,7 @@ export default function AdminAnalytics() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }: { name: string; percent?: number }) => 
+                      label={({ name, percent }: { name: string; percent?: number }) =>
                         `${name} ${percent ? (percent * 100).toFixed(0) : '0'}%`
                       }
                       outerRadius={120}
@@ -351,16 +305,16 @@ export default function AdminAnalytics() {
                         <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
-                      contentStyle={{ 
-                        backgroundColor: '#fff', 
+                      contentStyle={{
+                        backgroundColor: '#fff',
                         border: '1px solid #ccc',
                         borderRadius: '8px',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                       }}
                     />
-                    <Legend 
+                    <Legend
                       wrapperStyle={{ paddingTop: '20px' }}
                       iconType="circle"
                     />
@@ -385,52 +339,52 @@ export default function AdminAnalytics() {
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart data={data.monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis 
-                    dataKey="month" 
+                  <XAxis
+                    dataKey="month"
                     fontSize={12}
                     tick={{ fill: '#666' }}
                   />
-                  <YAxis 
+                  <YAxis
                     tickFormatter={(value) => `₹${(value/1000).toFixed(0)}K`}
                     fontSize={12}
                     tick={{ fill: '#666' }}
                   />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
                     labelStyle={{ color: '#000', fontWeight: 'bold' }}
-                    contentStyle={{ 
-                      backgroundColor: '#fff', 
+                    contentStyle={{
+                      backgroundColor: '#fff',
                       border: '1px solid #ccc',
                       borderRadius: '8px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                     }}
                   />
-                  <Legend 
+                  <Legend
                     wrapperStyle={{ paddingTop: '20px' }}
                     iconType="line"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke={COLORS.revenue} 
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke={COLORS.revenue}
                     strokeWidth={4}
                     name="Revenue"
                     dot={{ fill: COLORS.revenue, strokeWidth: 2, r: 6 }}
                     activeDot={{ r: 8, strokeWidth: 2 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="expenses" 
-                    stroke={COLORS.expenses} 
+                  <Line
+                    type="monotone"
+                    dataKey="expenses"
+                    stroke={COLORS.expenses}
                     strokeWidth={4}
                     name="Expenses"
                     dot={{ fill: COLORS.expenses, strokeWidth: 2, r: 6 }}
                     activeDot={{ r: 8, strokeWidth: 2 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="profit" 
-                    stroke={COLORS.profit} 
+                  <Line
+                    type="monotone"
+                    dataKey="profit"
+                    stroke={COLORS.profit}
                     strokeWidth={4}
                     name="Profit"
                     dot={{ fill: COLORS.profit, strokeWidth: 2, r: 6 }}

@@ -61,13 +61,10 @@ export async function GET(request: NextRequest) {
     }
 
     const db = await getDb()
-    const productsCollection = db.collection<Product>('products')
+    const inventoryCollection = db.collection('inventory')
 
     // Build MongoDB query
     const query: any = {}
-
-    // Exclude soft-deleted products
-    query.deletedAt = { $exists: false }
 
     // Search functionality
     if (filters.search) {
@@ -104,27 +101,27 @@ export async function GET(request: NextRequest) {
     // Execute queries
     const skip = (filters.page! - 1) * filters.limit!
 
-    const [products, totalCount] = await Promise.all([
-      productsCollection
+    const [inventoryItems, totalCount] = await Promise.all([
+      inventoryCollection
         .find(query)
         .sort(sort)
         .skip(skip)
         .limit(filters.limit!)
         .toArray(),
-      productsCollection.countDocuments(query)
+      inventoryCollection.countDocuments(query)
     ])
 
     // Calculate stats for the filtered results
-    const stats = await calculateProductStats(productsCollection, query)
+    const stats = await calculateInventoryStats(inventoryCollection, query)
 
-    // Transform products to include computed fields
-    const transformedProducts = products.map(product => ({
-      ...product,
-      id: product._id?.toString(),
-      isLowStock: isLowStock(product),
-      isOutOfStock: isOutOfStock(product),
-      discountPercentage: product.originalPrice && product.originalPrice > product.price
-        ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    // Transform inventory items to include computed fields
+    const transformedProducts = inventoryItems.map(item => ({
+      ...item,
+      id: item._id?.toString(),
+      isLowStock: item.quantity <= item.minStockLevel,
+      isOutOfStock: item.quantity === 0,
+      discountPercentage: item.originalPrice && item.originalPrice > item.price
+        ? Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100)
         : 0
     }))
 
@@ -175,27 +172,37 @@ export async function POST(request: NextRequest) {
     const productData = validation.data
 
     const db = await getDb()
-    const productsCollection = db.collection<Product>('products')
+    const inventoryCollection = db.collection('inventory')
 
-    // Create product with metadata
+    // Create inventory item with metadata
     const now = new Date()
-    const newProduct: Omit<Product, '_id'> = {
+    const newInventoryItem = {
       ...productData,
+      minStockLevel: 10,
+      maxStockLevel: 100,
+      rating: 0,
+      reviews: 0,
       createdAt: now,
       updatedAt: now,
-      createdBy: 'admin', // Replace with actual admin user ID from JWT
-      updatedBy: 'admin'
+      createdBy: 'admin',
+      updatedBy: 'admin',
+      location: 'Warehouse A',
+      supplier: productData.brand || 'Unknown',
+      reorderPoint: 10,
+      lastRestocked: now,
+      expiryDate: null,
+      barcode: `AUTO-${Date.now()}`
     }
 
-    const result = await productsCollection.insertOne(newProduct)
+    const result = await inventoryCollection.insertOne(newInventoryItem)
 
-    // Fetch and return the created product
-    const createdProduct = await productsCollection.findOne({ _id: result.insertedId })
+    // Fetch and return the created inventory item
+    const createdItem = await inventoryCollection.findOne({ _id: result.insertedId })
 
     return NextResponse.json({
       product: {
-        ...createdProduct,
-        id: createdProduct?._id?.toString()
+        ...createdItem,
+        id: createdItem?._id?.toString()
       }
     }, { status: 201 })
 
@@ -266,6 +273,70 @@ async function calculateProductStats(collection: any, baseQuery: any): Promise<P
     inactive: statusMap[ProductStatus.INACTIVE] || 0,
     draft: statusMap[ProductStatus.DRAFT] || 0,
     archived: statusMap[ProductStatus.ARCHIVED] || 0,
+    lowStock: stockData.lowStock,
+    outOfStock: stockData.outOfStock,
+    totalValue: valueData.totalValue,
+    averagePrice: valueData.averagePrice
+  }
+}
+
+async function calculateInventoryStats(collection: any, baseQuery: any): Promise<ProductStats> {
+  const [
+    totalResult,
+    statusCounts,
+    stockCounts,
+    valueResult
+  ] = await Promise.all([
+    collection.countDocuments(baseQuery),
+    collection.aggregate([
+      { $match: baseQuery },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]).toArray(),
+    collection.aggregate([
+      { $match: baseQuery },
+      {
+        $group: {
+          _id: null,
+          lowStock: {
+            $sum: {
+              $cond: [{ $lte: ['$quantity', '$minStockLevel'] }, 1, 0]
+            }
+          },
+          outOfStock: {
+            $sum: {
+              $cond: [{ $eq: ['$quantity', 0] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]).toArray(),
+    collection.aggregate([
+      { $match: baseQuery },
+      {
+        $group: {
+          _id: null,
+          totalValue: { $sum: { $multiply: ['$price', '$quantity'] } },
+          averagePrice: { $avg: '$price' }
+        }
+      }
+    ]).toArray()
+  ])
+
+  // Process status counts
+  const statusMap = statusCounts.reduce((acc: any, item: any) => {
+    acc[item._id] = item.count
+    return acc
+  }, {})
+
+  const stockData = stockCounts[0] || { lowStock: 0, outOfStock: 0 }
+  const valueData = valueResult[0] || { totalValue: 0, averagePrice: 0 }
+
+  return {
+    total: totalResult,
+    active: statusMap['active'] || 0,
+    inactive: statusMap['inactive'] || 0,
+    draft: 0, // Inventory doesn't have draft status
+    archived: 0, // Inventory doesn't have archived status
     lowStock: stockData.lowStock,
     outOfStock: stockData.outOfStock,
     totalValue: valueData.totalValue,
