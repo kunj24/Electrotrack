@@ -46,28 +46,23 @@ export async function GET(
     }
 
     const db = await getDb()
-    const productsCollection = db.collection<Product>('products')
+    const inventoryCollection = db.collection('inventory')
 
-    const product = await productsCollection.findOne({
-      _id: new ObjectId(id),
-      deletedAt: { $exists: false }
+    const item = await inventoryCollection.findOne({
+      _id: new ObjectId(id)
     })
 
-    if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    if (!item) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
 
-    // Get stock movement history
-    const stockMovements = await db.collection<StockMovement>('stock_movements')
-      .find({ productId: id })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .toArray()
+    // Get stock movement history (if applicable)
+    const stockMovements: any[] = [] // Inventory collection may not have stock movements
 
     return NextResponse.json({
       product: {
-        ...product,
-        id: product._id?.toString()
+        ...item,
+        id: item._id?.toString()
       },
       stockHistory: stockMovements
     })
@@ -118,80 +113,61 @@ export async function PUT(
     const { id: _, ...productUpdate } = updateData
 
     const db = await getDb()
-    const productsCollection = db.collection<Product>('products')
+    const inventoryCollection = db.collection('inventory')
 
-    // Check if product exists
-    const existingProduct = await productsCollection.findOne({
-      _id: new ObjectId(id),
-      deletedAt: { $exists: false }
+    // Check if item exists
+    const existingItem = await inventoryCollection.findOne({
+      _id: new ObjectId(id)
     })
 
-    if (!existingProduct) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    if (!existingItem) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
 
-    // Track stock changes for audit
+    // Track stock changes for audit (optional)
     let stockMovement: Omit<StockMovement, '_id'> | null = null
-    if (productUpdate.quantity !== undefined && productUpdate.quantity !== existingProduct.quantity) {
+    if (productUpdate.quantity !== undefined && productUpdate.quantity !== existingItem.quantity) {
       stockMovement = {
         productId: id,
         type: 'adjustment',
-        quantity: productUpdate.quantity - existingProduct.quantity,
-        previousQuantity: existingProduct.quantity,
+        quantity: productUpdate.quantity - existingItem.quantity,
+        previousQuantity: existingItem.quantity,
         newQuantity: productUpdate.quantity,
         reason: 'Manual inventory adjustment via admin',
-        adjustedBy: 'admin', // Replace with actual admin user ID from JWT
+        adjustedBy: 'admin',
         createdAt: new Date()
       }
     }
 
-    // Update product
-    const updateResult = await productsCollection.updateOne(
+    // Update inventory item
+    const updateResult = await inventoryCollection.updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
           ...productUpdate,
           updatedAt: new Date(),
-          updatedBy: 'admin' // Replace with actual admin user ID from JWT
+          updatedBy: 'admin'
         }
       }
     )
 
     if (updateResult.matchedCount === 0) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
 
-    // Also update the inventory collection to keep it in sync
-    const inventoryCollection = db.collection('inventory')
-    const inventoryUpdateData: any = { ...productUpdate, updatedAt: new Date(), updatedBy: 'admin' }
-
-    // Remove fields that don't exist in inventory collection
-    delete inventoryUpdateData.minStockLevel
-    delete inventoryUpdateData.maxStockLevel
-    delete inventoryUpdateData.isFeatured
-    delete inventoryUpdateData.tags
-    delete inventoryUpdateData.seoTitle
-    delete inventoryUpdateData.seoDescription
-    delete inventoryUpdateData.weight
-    delete inventoryUpdateData.dimensions
-
-    await inventoryCollection.updateOne(
-      { name: existingProduct.name },
-      { $set: inventoryUpdateData }
-    )
-
-    // Log stock movement if quantity changed
+    // Log stock movement if quantity changed (optional)
     if (stockMovement) {
-      await db.collection<StockMovement>('stock_movements').insertOne(stockMovement)
+      // You can log to a separate collection if needed
+      console.log('Stock movement:', stockMovement)
     }
 
-    // Fetch and return updated product
-    const updatedProduct = await productsCollection.findOne({ _id: new ObjectId(id) })
+    // Fetch and return updated item
+    const updatedItem = await inventoryCollection.findOne({ _id: new ObjectId(id) })
 
     return NextResponse.json({
       product: {
-        ...updatedProduct,
-        id: updatedProduct?._id?.toString()
+        ...updatedItem,
+        id: updatedItem?._id?.toString()
       }
     })
 
@@ -224,41 +200,26 @@ export async function DELETE(
     }
 
     const db = await getDb()
-    const productsCollection = db.collection<Product>('products')
     const inventoryCollection = db.collection('inventory')
 
-    // Check if product exists and is not already deleted
-    const existingProduct = await productsCollection.findOne({
-      _id: new ObjectId(id),
-      deletedAt: { $exists: false }
+    // Check if item exists
+    const existingItem = await inventoryCollection.findOne({
+      _id: new ObjectId(id)
     })
 
-    if (!existingProduct) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    if (!existingItem) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
 
-    // Soft delete the product
-    const updateResult = await productsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          deletedAt: new Date(),
-          status: ProductStatus.ARCHIVED,
-          updatedAt: new Date(),
-          updatedBy: 'admin' // Replace with actual admin user ID from JWT
-        }
-      }
-    )
+    // Delete the inventory item
+    const deleteResult = await inventoryCollection.deleteOne({ _id: new ObjectId(id) })
 
-    if (updateResult.matchedCount === 0) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    if (deleteResult.deletedCount === 0) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
-
-    // Also remove from inventory collection to keep it in sync
-    await inventoryCollection.deleteOne({ name: existingProduct.name })
 
     return NextResponse.json({
-      message: 'Product deleted successfully'
+      message: 'Item deleted successfully'
     })
 
   } catch (error) {

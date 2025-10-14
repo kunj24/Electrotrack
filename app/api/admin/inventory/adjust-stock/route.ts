@@ -55,19 +55,18 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb()
-    const productsCollection = db.collection<Product>('products')
+    const inventoryCollection = db.collection('inventory')
 
-    // Get current product
-    const product = await productsCollection.findOne({
-      _id: new ObjectId(productId),
-      deletedAt: { $exists: false }
+    // Get current inventory item
+    const item = await inventoryCollection.findOne({
+      _id: new ObjectId(productId)
     })
 
-    if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    if (!item) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
 
-    const previousQuantity = product.quantity
+    const previousQuantity = item.quantity
     const newQuantity = previousQuantity + quantityChange
 
     // Validate new quantity is not negative
@@ -78,8 +77,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update product quantity
-    const updateResult = await productsCollection.updateOne(
+    // Update inventory item quantity
+    const updateResult = await inventoryCollection.updateOne(
       { _id: new ObjectId(productId) },
       {
         $set: {
@@ -91,47 +90,21 @@ export async function POST(request: NextRequest) {
     )
 
     if (updateResult.matchedCount === 0) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
     }
 
-    // Also update inventory collection quantity
-    const inventoryCollection = db.collection('inventory')
-    await inventoryCollection.updateOne(
-      { name: product.name },
-      {
-        $set: {
-          quantity: newQuantity,
-          updatedAt: new Date(),
-          updatedBy: adjustedBy
-        }
-      }
-    )
+    // Log stock movement (optional - you can implement this if needed)
+    // await db.collection<StockMovement>('stock_movements').insertOne(stockMovement)
 
-    // Log stock movement
-    const stockMovement: Omit<StockMovement, '_id'> = {
-      productId,
-      type: 'adjustment',
-      quantity: quantityChange,
-      previousQuantity,
-      newQuantity,
-      reason,
-      notes,
-      adjustedBy,
-      createdAt: new Date()
-    }
-
-    await db.collection<StockMovement>('stock_movements').insertOne(stockMovement)
-
-    // Get updated product
-    const updatedProduct = await productsCollection.findOne({ _id: new ObjectId(productId) })
+    // Get updated item
+    const updatedItem = await inventoryCollection.findOne({ _id: new ObjectId(productId) })
 
     return NextResponse.json({
       product: {
-        ...updatedProduct,
-        id: updatedProduct?._id?.toString()
+        ...updatedItem,
+        id: updatedItem?._id?.toString()
       },
       stockMovement: {
-        ...stockMovement,
         quantityChange,
         previousQuantity,
         newQuantity
