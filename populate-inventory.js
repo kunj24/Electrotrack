@@ -1,22 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/mongodb'
+const { MongoClient } = require('mongodb');
 
-export async function POST(request: NextRequest) {
+async function populateInventoryCollection() {
+  const uri = 'mongodb://localhost:27017/electrotrack';
+  const client = new MongoClient(uri);
+
   try {
-    const db = await getDb()
+    await client.connect();
+    console.log('Connected to MongoDB');
 
-    // Clear existing collections (except users and carts)
-    const collectionsToKeep = ['users', 'carts']
-    const allCollections = await db.listCollections().toArray()
+    const database = client.db('electrotrack');
+    const inventoryCollection = database.collection('inventory');
 
-    for (const collection of allCollections) {
-      if (!collectionsToKeep.includes(collection.name)) {
-        await db.collection(collection.name).deleteMany({})
-      }
-    }
+    // Clear existing inventory
+    await inventoryCollection.deleteMany({});
+    console.log('Cleared existing inventory collection');
 
-    // 1. PRODUCTS Collection - Electronics inventory
-    const products = [
+    // All 14 products from admin inventory
+    const inventoryProducts = [
       {
         name: "Crompton HighFlo 1200mm Ceiling Fan",
         sku: "CRO-FAN-1200-001",
@@ -37,7 +37,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse A",
+        supplier: "Crompton India",
+        reorderPoint: 10,
+        lastRestocked: new Date("2025-10-01"),
+        expiryDate: null,
+        barcode: "8900000000001"
       },
       {
         name: "Havells Efficiencia 400mm Table Fan",
@@ -59,7 +65,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse A",
+        supplier: "Havells India Ltd",
+        reorderPoint: 8,
+        lastRestocked: new Date("2025-10-02"),
+        expiryDate: null,
+        barcode: "8900000000002"
       },
       {
         name: "Usha Mist Air Icy 400mm Table Fan",
@@ -81,7 +93,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse B",
+        supplier: "Usha International Ltd",
+        reorderPoint: 7,
+        lastRestocked: new Date("2025-10-03"),
+        expiryDate: null,
+        barcode: "8900000000003"
       },
       {
         name: 'Mi 32" HD Ready Smart LED TV',
@@ -103,7 +121,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse C",
+        supplier: "Xiaomi India",
+        reorderPoint: 3,
+        lastRestocked: new Date("2025-10-04"),
+        expiryDate: null,
+        barcode: "8900000000004"
       },
       {
         name: "Voltas 1 Ton 3 Star Split AC",
@@ -125,7 +149,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse D",
+        supplier: "Voltas Ltd",
+        reorderPoint: 2,
+        lastRestocked: new Date("2025-10-05"),
+        expiryDate: null,
+        barcode: "8900000000005"
       },
       {
         name: "Carrier 2 Ton 3 Star Inverter Split AC",
@@ -147,7 +177,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse D",
+        supplier: "Carrier India",
+        reorderPoint: 1,
+        lastRestocked: new Date("2025-10-06"),
+        expiryDate: null,
+        barcode: "8900000000006"
       },
       {
         name: "Blue Star 1.5 Ton 5 Star Window AC",
@@ -169,7 +205,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse D",
+        supplier: "Blue Star Ltd",
+        reorderPoint: 2,
+        lastRestocked: new Date("2025-10-07"),
+        expiryDate: null,
+        barcode: "8900000000007"
       },
       {
         name: "Crompton Ozone 88L Desert Cooler",
@@ -191,7 +233,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse B",
+        supplier: "Crompton India",
+        reorderPoint: 4,
+        lastRestocked: new Date("2025-10-08"),
+        expiryDate: null,
+        barcode: "8900000000008"
       },
       {
         name: "Orient Electric 30L Personal Cooler",
@@ -213,7 +261,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse B",
+        supplier: "Orient Electric Ltd",
+        reorderPoint: 5,
+        lastRestocked: new Date("2025-10-09"),
+        expiryDate: null,
+        barcode: "8900000000009"
       },
       {
         name: "Kenstar 60L Desert Cooler",
@@ -235,7 +289,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse B",
+        supplier: "Kenstar India",
+        reorderPoint: 4,
+        lastRestocked: new Date("2025-10-10"),
+        expiryDate: null,
+        barcode: "8900000000010"
       },
       {
         name: "Anchor Roma Fan Dimmer Regulator",
@@ -257,7 +317,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse A",
+        supplier: "Anchor Electricals",
+        reorderPoint: 20,
+        lastRestocked: new Date("2025-10-11"),
+        expiryDate: null,
+        barcode: "8900000000011"
       },
       {
         name: "Anchor 16A Heavy Duty Extension Board",
@@ -279,7 +345,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse A",
+        supplier: "Anchor Electricals",
+        reorderPoint: 15,
+        lastRestocked: new Date("2025-10-12"),
+        expiryDate: null,
+        barcode: "8900000000012"
       },
       {
         name: "Havells Crabtree 6A Socket",
@@ -301,7 +373,13 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse A",
+        supplier: "Havells India Ltd",
+        reorderPoint: 30,
+        lastRestocked: new Date("2025-10-13"),
+        expiryDate: null,
+        barcode: "8900000000013"
       },
       {
         name: "Philips 20W LED Tube Light",
@@ -323,110 +401,30 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: "admin",
-        updatedBy: "admin"
+        updatedBy: "admin",
+        location: "Warehouse A",
+        supplier: "Philips India",
+        reorderPoint: 25,
+        lastRestocked: new Date("2025-10-14"),
+        expiryDate: null,
+        barcode: "8900000000014"
       }
-    ]
+    ];
 
-    await db.collection('products').insertMany(products as any)
+    const result = await inventoryCollection.insertMany(inventoryProducts);
+    console.log(`Successfully inserted ${result.insertedCount} products into inventory collection`);
+    console.log('Inserted IDs:', result.insertedIds);
 
-    // 2. CATEGORIES Collection - Product categories
-    const categories = [
-      {
-        _id: "cat_fans",
-        name: "Fans",
-        slug: "fans",
-        displayName: "Ceiling & Table Fans",
-        description: "High-quality ceiling and table fans for home and office",
-        image: "/placeholder.jpg",
-        isActive: true,
-        sortOrder: 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        _id: "cat_coolers",
-        name: "Coolers",
-        slug: "coolers",
-        displayName: "Air Coolers",
-        description: "Desert and room air coolers for all seasons",
-        image: "/placeholder.jpg",
-        isActive: true,
-        sortOrder: 2,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        _id: "cat_ac",
-        name: "Air Conditioners",
-        slug: "air-conditioners",
-        displayName: "Air Conditioners",
-        description: "Split and window ACs with inverter technology",
-        image: "/placeholder.jpg",
-        isActive: true,
-        sortOrder: 3,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        _id: "cat_tv",
-        name: "Televisions",
-        slug: "televisions",
-        displayName: "Smart TVs",
-        description: "HD and 4K UHD Smart LED TVs",
-        image: "/placeholder.jpg",
-        isActive: true,
-        sortOrder: 4,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        _id: "cat_accessories",
-        name: "Accessories",
-        slug: "accessories",
-        displayName: "Electrical Accessories",
-        description: "Extension boards, sockets, regulators and lighting",
-        image: "/placeholder.jpg",
-        isActive: true,
-        sortOrder: 5,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]
-
-    await db.collection('categories').insertMany(categories as any)
-
-    // Get collection counts
-    const collections = await db.listCollections().toArray()
-    const counts: Record<string, number> = {}
-
-    for (const collection of collections) {
-      counts[collection.name] = await db.collection(collection.name).countDocuments()
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Radhika Electronics database created successfully!",
-      collectionsCreated: {
-        products: products.length,
-        categories: categories.length
-      },
-      totalCollections: collections.length,
-      allCollections: counts,
-      summary: {
-        totalProducts: products.length,
-        totalCategories: categories.length
-      }
-    })
+    // Verify the insertion
+    const count = await inventoryCollection.countDocuments();
+    console.log(`Total documents in inventory collection: ${count}`);
 
   } catch (error) {
-    console.error('Error creating database collections:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to create database collections',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    )
+    console.error('Error populating inventory collection:', error);
+  } finally {
+    await client.close();
+    console.log('Disconnected from MongoDB');
   }
 }
+
+populateInventoryCollection();
