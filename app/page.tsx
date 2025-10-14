@@ -2,7 +2,7 @@ import { Header } from "@/components/header"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Fan, Tv, AirVent, Waves, Smartphone, Laptop } from "lucide-react"
+import { Fan, Tv, AirVent, Waves, Settings } from "lucide-react"
 import { Footer } from "@/components/footer"
 
 export default function HomePage() {
@@ -11,8 +11,7 @@ export default function HomePage() {
     { name: "TVs", icon: Tv },
     { name: "Air Conditioners", icon: AirVent },
     { name: "Coolers", icon: Waves },
-    { name: "Mobile Phones", icon: Smartphone },
-    { name: "Laptops", icon: Laptop },
+    { name: "Accessories", icon: Settings },
   ]
 
   return (
