@@ -4,7 +4,6 @@ import {
   Product,
   updateProductSchema,
   ProductStatus,
-  validateSKU,
   StockMovement,
   stockAdjustmentSchema
 } from '@/lib/models/product'
@@ -118,14 +117,6 @@ export async function PUT(
     const updateData = validation.data
     const { id: _, ...productUpdate } = updateData
 
-    // Validate SKU format if SKU is being updated
-    if (productUpdate.sku && !validateSKU(productUpdate.sku)) {
-      return NextResponse.json(
-        { error: 'Invalid SKU format. Use 3-50 alphanumeric characters, hyphens, and underscores only.' },
-        { status: 400 }
-      )
-    }
-
     const db = await getDb()
     const productsCollection = db.collection<Product>('products')
 
@@ -139,28 +130,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    // Check for duplicate SKU if SKU is being changed
-    if (productUpdate.sku && productUpdate.sku !== existingProduct.sku) {
-      const duplicateProduct = await productsCollection.findOne({
-        sku: productUpdate.sku,
-        _id: { $ne: new ObjectId(id) },
-        deletedAt: { $exists: false }
-      })
-
-      if (duplicateProduct) {
-        return NextResponse.json(
-          { error: 'SKU already exists' },
-          { status: 409 }
-        )
-      }
-    }
-
     // Track stock changes for audit
     let stockMovement: Omit<StockMovement, '_id'> | null = null
     if (productUpdate.quantity !== undefined && productUpdate.quantity !== existingProduct.quantity) {
       stockMovement = {
         productId: id,
-        productSku: existingProduct.sku,
         type: 'adjustment',
         quantity: productUpdate.quantity - existingProduct.quantity,
         previousQuantity: existingProduct.quantity,
@@ -262,7 +236,7 @@ export async function DELETE(
     }
 
     // Also remove from inventory collection to keep it in sync
-    await inventoryCollection.deleteOne({ sku: existingProduct.sku })
+    await inventoryCollection.deleteOne({ name: existingProduct.name })
 
     return NextResponse.json({
       message: 'Product deleted successfully'
