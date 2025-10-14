@@ -54,19 +54,6 @@ export async function POST(
       }, { status: 404 })
     }
 
-    // Check if SKU conflicts with existing active products
-    const skuConflict = await productsCollection.findOne({
-      sku: existingProduct.sku,
-      _id: { $ne: new ObjectId(id) },
-      deletedAt: { $exists: false }
-    })
-
-    if (skuConflict) {
-      return NextResponse.json({
-        error: 'Cannot restore: SKU conflicts with existing product'
-      }, { status: 409 })
-    }
-
     // Restore the product
     const updateResult = await productsCollection.updateOne(
       { _id: new ObjectId(id) },

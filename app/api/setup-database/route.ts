@@ -4,14 +4,14 @@ import { getDb } from '@/lib/mongodb'
 export async function POST(request: NextRequest) {
   try {
     const db = await getDb()
-    
+
     // Create indexes for better performance
-    
+
     // Users collection indexes
     const users = db.collection('users')
     await users.createIndex({ email: 1 }, { unique: true })
     await users.createIndex({ createdAt: -1 })
-    
+
     // Products collection indexes
     const products = db.collection('products')
     await products.createIndex({ category: 1 })
@@ -19,26 +19,25 @@ export async function POST(request: NextRequest) {
     await products.createIndex({ price: 1 })
     await products.createIndex({ stock: 1 })
     await products.createIndex({ isActive: 1, isFeatured: 1 })
-    await products.createIndex({ sku: 1 }, { unique: true, sparse: true })
-    
+
     // Orders collection indexes
     const orders = db.collection('orders')
     await orders.createIndex({ userEmail: 1 })
     await orders.createIndex({ orderId: 1 }, { unique: true })
     await orders.createIndex({ status: 1 })
     await orders.createIndex({ createdAt: -1 })
-    
+
     // Carts collection indexes
     const carts = db.collection('carts')
     await carts.createIndex({ userId: 1 }, { unique: true })
     await carts.createIndex({ updatedAt: -1 })
-    
+
     // Categories collection indexes
     const categories = db.collection('categories')
     await categories.createIndex({ slug: 1 }, { unique: true })
     await categories.createIndex({ parentCategory: 1 })
     await categories.createIndex({ sortOrder: 1 })
-    
+
     // Reviews collection indexes
     const reviews = db.collection('reviews')
     await reviews.createIndex({ productId: 1 })
@@ -46,18 +45,18 @@ export async function POST(request: NextRequest) {
     await reviews.createIndex({ rating: 1 })
     await reviews.createIndex({ createdAt: -1 })
     await reviews.createIndex({ productId: 1, userEmail: 1 }, { unique: true })
-    
+
     // Inventory collection indexes
     const inventory = db.collection('inventory')
     await inventory.createIndex({ productId: 1 })
     await inventory.createIndex({ createdAt: -1 })
-    
+
     // Stock alerts collection indexes
     const stockAlerts = db.collection('stock_alerts')
     await stockAlerts.createIndex({ productId: 1 }, { unique: true })
-    
+
     // Insert sample data if collections are empty
-    
+
     // Sample categories
     const categoryCount = await categories.countDocuments()
     if (categoryCount === 0) {
@@ -122,7 +121,7 @@ export async function POST(request: NextRequest) {
         }
       ])
     }
-    
+
     // Sample products
     const productCount = await products.countDocuments()
     if (productCount === 0) {
@@ -134,7 +133,6 @@ export async function POST(request: NextRequest) {
           originalPrice: 129999,
           category: 'smartphones',
           brand: 'Apple',
-          sku: 'IPH15PRO001',
           stock: 25,
           images: ['/placeholder.jpg'],
           specifications: {
@@ -160,7 +158,6 @@ export async function POST(request: NextRequest) {
           originalPrice: 99999,
           category: 'smartphones',
           brand: 'Samsung',
-          sku: 'SAM24001',
           stock: 30,
           images: ['/placeholder.jpg'],
           specifications: {
@@ -186,7 +183,6 @@ export async function POST(request: NextRequest) {
           originalPrice: 144999,
           category: 'laptops',
           brand: 'Apple',
-          sku: 'MBA13M3001',
           stock: 15,
           images: ['/placeholder.jpg'],
           specifications: {
@@ -212,7 +208,6 @@ export async function POST(request: NextRequest) {
           originalPrice: 99999,
           category: 'tvs',
           brand: 'Samsung',
-          sku: 'SAM65QLED001',
           stock: 8,
           images: ['/placeholder.jpg'],
           specifications: {
@@ -238,7 +233,6 @@ export async function POST(request: NextRequest) {
           originalPrice: 52999,
           category: 'air-conditioners',
           brand: 'LG',
-          sku: 'LG15INV001',
           stock: 12,
           images: ['/placeholder.jpg'],
           specifications: {
@@ -259,13 +253,13 @@ export async function POST(request: NextRequest) {
         }
       ])
     }
-    
+
     return NextResponse.json({
       success: true,
       message: 'Database setup completed successfully',
       collections: [
         'users',
-        'products', 
+        'products',
         'orders',
         'carts',
         'categories',
@@ -275,12 +269,12 @@ export async function POST(request: NextRequest) {
       ],
       sampleDataCreated: categoryCount === 0 && productCount === 0
     })
-    
+
   } catch (error: any) {
     console.error('Database setup error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Database setup failed',
-      details: error.message 
+      details: error.message
     }, { status: 500 })
   }
 }

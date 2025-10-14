@@ -7,7 +7,6 @@ import {
   createProductSchema,
   updateProductSchema,
   ProductStatus,
-  validateSKU,
   isLowStock,
   isOutOfStock
 } from '@/lib/models/product'
@@ -74,7 +73,6 @@ export async function GET(request: NextRequest) {
     if (filters.search) {
       query.$or = [
         { name: { $regex: filters.search, $options: 'i' } },
-        { sku: { $regex: filters.search, $options: 'i' } },
         { description: { $regex: filters.search, $options: 'i' } },
         { brand: { $regex: filters.search, $options: 'i' } }
       ]
@@ -176,29 +174,8 @@ export async function POST(request: NextRequest) {
 
     const productData = validation.data
 
-    // Validate SKU format
-    if (!validateSKU(productData.sku)) {
-      return NextResponse.json(
-        { error: 'Invalid SKU format. Use 3-50 alphanumeric characters, hyphens, and underscores only.' },
-        { status: 400 }
-      )
-    }
-
     const db = await getDb()
     const productsCollection = db.collection<Product>('products')
-
-    // Check for duplicate SKU
-    const existingProduct = await productsCollection.findOne({
-      sku: productData.sku,
-      deletedAt: { $exists: false }
-    })
-
-    if (existingProduct) {
-      return NextResponse.json(
-        { error: 'SKU already exists' },
-        { status: 409 }
-      )
-    }
 
     // Create product with metadata
     const now = new Date()

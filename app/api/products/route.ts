@@ -12,7 +12,6 @@ const customerProductSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   subcategory: z.string().optional(),
   brand: z.string().optional(),
-  sku: z.string().optional(),
   stock: z.number().int().min(0, 'Stock cannot be negative'), // Legacy field for backwards compatibility
   quantity: z.number().int().min(0, 'Quantity cannot be negative'),
   images: z.array(z.string()).optional(),
@@ -59,8 +58,7 @@ export async function GET(request: NextRequest) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
-        { brand: { $regex: search, $options: 'i' } },
-        { sku: { $regex: search, $options: 'i' } }
+        { brand: { $regex: search, $options: 'i' } }
       ]
     }
 
@@ -85,7 +83,6 @@ export async function GET(request: NextRequest) {
       category: product.category,
       subcategory: product.subcategory,
       brand: product.brand,
-      sku: product.sku,
       stock: product.quantity, // Legacy field
       quantity: product.quantity,
       images: product.images,
@@ -131,15 +128,9 @@ export async function POST(request: NextRequest) {
     const db = await getDb()
     const products = db.collection<Product>('products')
 
-    // Generate SKU if not provided
-    if (!validatedData.sku) {
-      validatedData.sku = `PRD-${Date.now()}`
-    }
-
     // Create product record with new schema
     const newProduct: Omit<Product, '_id'> = {
       name: validatedData.name,
-      sku: validatedData.sku,
       description: validatedData.description,
       price: validatedData.price,
       originalPrice: validatedData.originalPrice,
