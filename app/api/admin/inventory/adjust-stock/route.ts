@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
     // Log stock movement
     const stockMovement: Omit<StockMovement, '_id'> = {
       productId,
-      productSku: product.sku,
       type: 'adjustment',
       quantity: quantityChange,
       previousQuantity,
@@ -180,7 +179,7 @@ export async function GET(request: NextRequest) {
             let: { productId: { $toObjectId: '$productId' } },
             pipeline: [
               { $match: { $expr: { $eq: ['$_id', '$$productId'] } } },
-              { $project: { name: 1, sku: 1, images: 1 } }
+              { $project: { name: 1, images: 1 } }
             ],
             as: 'product'
           }
