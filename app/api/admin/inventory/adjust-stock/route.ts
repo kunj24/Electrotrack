@@ -94,6 +94,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
+    // Also update inventory collection quantity
+    const inventoryCollection = db.collection('inventory')
+    await inventoryCollection.updateOne(
+      { name: product.name },
+      {
+        $set: {
+          quantity: newQuantity,
+          updatedAt: new Date(),
+          updatedBy: adjustedBy
+        }
+      }
+    )
+
     // Log stock movement
     const stockMovement: Omit<StockMovement, '_id'> = {
       productId,

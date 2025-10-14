@@ -161,6 +161,25 @@ export async function PUT(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
+    // Also update the inventory collection to keep it in sync
+    const inventoryCollection = db.collection('inventory')
+    const inventoryUpdateData: any = { ...productUpdate, updatedAt: new Date(), updatedBy: 'admin' }
+
+    // Remove fields that don't exist in inventory collection
+    delete inventoryUpdateData.minStockLevel
+    delete inventoryUpdateData.maxStockLevel
+    delete inventoryUpdateData.isFeatured
+    delete inventoryUpdateData.tags
+    delete inventoryUpdateData.seoTitle
+    delete inventoryUpdateData.seoDescription
+    delete inventoryUpdateData.weight
+    delete inventoryUpdateData.dimensions
+
+    await inventoryCollection.updateOne(
+      { name: existingProduct.name },
+      { $set: inventoryUpdateData }
+    )
+
     // Log stock movement if quantity changed
     if (stockMovement) {
       await db.collection<StockMovement>('stock_movements').insertOne(stockMovement)
