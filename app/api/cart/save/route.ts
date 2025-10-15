@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,42 @@ export async function POST(request: NextRequest) {
     const db = await getDb('electrotrack')
     console.log('Database connected, getting carts collection')
     const cartsCollection = db.collection('carts')
+    const inventoryCollection = db.collection('inventory')
+
+    // Validate stock levels for all items
+    if (items && items.length > 0) {
+      console.log('Validating stock levels for', items.length, 'items')
+      
+      for (const item of items) {
+        if (!item.id) continue
+        
+        const inventoryItem = await inventoryCollection.findOne({ _id: new ObjectId(item.id) })
+        if (!inventoryItem) {
+          console.log('Item not found in inventory:', item.id)
+          return NextResponse.json(
+            { error: `Product ${item.name || item.id} is no longer available` },
+            { status: 400 }
+          )
+        }
+        
+        if (inventoryItem.quantity <= 0) {
+          console.log('Item out of stock:', inventoryItem.name, 'quantity:', inventoryItem.quantity)
+          return NextResponse.json(
+            { error: `Product ${inventoryItem.name} is currently out of stock` },
+            { status: 400 }
+          )
+        }
+        
+        // Check if requested quantity exceeds available stock
+        if (item.quantity > inventoryItem.quantity) {
+          console.log('Insufficient stock for:', inventoryItem.name, 'requested:', item.quantity, 'available:', inventoryItem.quantity)
+          return NextResponse.json(
+            { error: `Only ${inventoryItem.quantity} units available for ${inventoryItem.name}` },
+            { status: 400 }
+          )
+        }
+      }
+    }
 
     console.log('Performing upsert operation for user:', userEmail)
     // Use replaceOne with upsert to handle database conflicts properly
