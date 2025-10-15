@@ -282,10 +282,16 @@ export default function DashboardPage() {
               <CardContent className="p-4">
                 <CardTitle className="text-lg mb-2">{product.name}</CardTitle>
                 <CardDescription className="mb-3">{product.description}</CardDescription>
-                
+
                 {!product.inStock && (
                   <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
                     <p className="text-red-700 text-sm font-medium">This product is currently out of stock</p>
+                  </div>
+                )}
+
+                {product.inStock && product.quantity <= 5 && (
+                  <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-md">
+                    <p className="text-orange-700 text-sm font-medium">Only {product.quantity} stock available</p>
                   </div>
                 )}
 
@@ -308,9 +314,9 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <Button 
-                  className={`w-full ${!product.inStock ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' : ''}`} 
-                  onClick={() => addToCart(product)} 
+                <Button
+                  className={`w-full ${!product.inStock ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' : ''}`}
+                  onClick={() => addToCart(product)}
                   disabled={!product.inStock}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
