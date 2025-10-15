@@ -26,10 +26,10 @@ export async function POST(request: NextRequest) {
     // Validate stock levels for all items
     if (items && items.length > 0) {
       console.log('Validating stock levels for', items.length, 'items')
-      
+
       for (const item of items) {
         if (!item.id) continue
-        
+
         const inventoryItem = await inventoryCollection.findOne({ _id: new ObjectId(item.id) })
         if (!inventoryItem) {
           console.log('Item not found in inventory:', item.id)
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
-        
+
         if (inventoryItem.quantity <= 0) {
           console.log('Item out of stock:', inventoryItem.name, 'quantity:', inventoryItem.quantity)
           return NextResponse.json(
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
-        
+
         // Check if requested quantity exceeds available stock
         if (item.quantity > inventoryItem.quantity) {
           console.log('Insufficient stock for:', inventoryItem.name, 'requested:', item.quantity, 'available:', inventoryItem.quantity)
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     // This will completely replace the document, avoiding index conflicts
     try {
       const result = await cartsCollection.replaceOne(
-        { 
+        {
           $or: [
             { userEmail: userEmail },
             { userId: userEmail }
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       // Handle duplicate-key specifically to provide a clearer message
       if (err && err.code === 11000) {
         console.error('Duplicate key error while saving cart. Attempting to delete and recreate:', err)
-        
+
         // Try to delete existing cart and create new one
         try {
           await cartsCollection.deleteMany({
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
               { userId: userEmail }
             ]
           })
-          
+
           const insertResult = await cartsCollection.insertOne({
             userEmail,
             userId: userEmail,
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date(),
             createdAt: new Date()
           })
-          
+
           console.log('Cart recreated successfully:', insertResult)
           return NextResponse.json({
             success: true,
