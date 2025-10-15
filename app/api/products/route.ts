@@ -37,8 +37,7 @@ export async function GET(request: NextRequest) {
 
     // Build query - only show active products to customers
     const query: any = {
-      status: 'active',
-      quantity: { $gt: 0 } // Only show products in stock
+      status: 'active'
     }
 
     if (category) {

@@ -122,6 +122,16 @@ export default function DashboardPage() {
       return
     }
 
+    // Check if product is in stock
+    if (!product.inStock || product.quantity <= 0) {
+      toast({
+        title: "Out of Stock",
+        description: "This product is currently out of stock and cannot be added to cart.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!product || !product.id || !product.name || typeof product.price !== 'number') {
       toast({
         title: "Invalid product",
@@ -248,13 +258,13 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((product) => (
-            <Card key={product.id} className="hover:shadow-lg transition-shadow">
+            <Card key={product.id} className={`hover:shadow-lg transition-shadow ${!product.inStock ? 'opacity-75 border-red-200' : ''}`}>
               <CardHeader className="p-0">
                 <div className="relative">
                   <img
                     src={product.image || "/placeholder.svg"}
                     alt={product.name}
-                    className="w-full h-48 object-cover rounded-t-lg"
+                    className={`w-full h-48 object-cover rounded-t-lg ${!product.inStock ? 'grayscale' : ''}`}
                   />
                   {product.originalPrice && product.originalPrice > product.price && (
                     <Badge className="absolute top-2 left-2 bg-red-500">
@@ -262,7 +272,7 @@ export default function DashboardPage() {
                     </Badge>
                   )}
                   {!product.inStock && (
-                    <Badge variant="secondary" className="absolute top-2 right-2">
+                    <Badge variant="destructive" className="absolute top-2 right-2">
                       Out of Stock
                     </Badge>
                   )}
@@ -272,6 +282,12 @@ export default function DashboardPage() {
               <CardContent className="p-4">
                 <CardTitle className="text-lg mb-2">{product.name}</CardTitle>
                 <CardDescription className="mb-3">{product.description}</CardDescription>
+                
+                {!product.inStock && (
+                  <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-red-700 text-sm font-medium">This product is currently out of stock</p>
+                  </div>
+                )}
 
                 <div className="flex items-center mb-3">
                   <div className="flex items-center">
@@ -292,7 +308,11 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <Button className="w-full" onClick={() => addToCart(product)} disabled={!product.inStock}>
+                <Button 
+                  className={`w-full ${!product.inStock ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' : ''}`} 
+                  onClick={() => addToCart(product)} 
+                  disabled={!product.inStock}
+                >
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   {product.inStock ? "Add to Cart" : "Out of Stock"}
                 </Button>
