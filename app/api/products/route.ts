@@ -33,12 +33,11 @@ export async function GET(request: NextRequest) {
     const featured = url.searchParams.get('featured') === 'true'
 
     const db = await getDb()
-    const products = db.collection<Product>('products')
+    const products = db.collection('inventory')
 
-    // Build query - only show active, non-deleted products to customers
+    // Build query - only show active products to customers
     const query: any = {
-      status: ProductStatus.ACTIVE,
-      deletedAt: { $exists: false },
+      status: 'active',
       quantity: { $gt: 0 } // Only show products in stock
     }
 
