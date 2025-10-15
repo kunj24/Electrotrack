@@ -5,7 +5,7 @@ import { AdminHeader } from "@/components/admin-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, CreditCard, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react"
+import { BarChart3, CreditCard, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, Package } from "lucide-react"
 import Link from "next/link"
 import { useTransactionStore } from "@/lib/transaction-store"
 import { adminAuth } from "@/lib/admin-auth"
@@ -14,7 +14,7 @@ import { useMemo } from "react"
 export default function AdminDashboard() {
   const { transactions, getStats } = useTransactionStore()
   const currentUser = adminAuth.getCurrentUser()
-  
+
   // Memoize stats to prevent unnecessary recalculations
   const stats = useMemo(() => getStats(), [getStats])
 
@@ -61,11 +61,11 @@ export default function AdminDashboard() {
   ], [stats.totalRevenue, stats.totalExpenses, stats.netProfit, safeTransactions.length])
 
   const recentTransactions = useMemo(() => safeTransactions
-    .filter(transaction => 
-      transaction && 
+    .filter(transaction =>
+      transaction &&
       typeof transaction === 'object' &&
-      transaction.id && 
-      transaction.date && 
+      transaction.id &&
+      transaction.date &&
       transaction.description &&
       typeof transaction.amount === 'number'
     ) // Filter out invalid transactions
@@ -198,6 +198,12 @@ export default function AdminDashboard() {
                   <CardDescription>Common admin tasks</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <Button asChild className="w-full justify-start bg-transparent" variant="outline">
+                    <Link href="/admin/inventory">
+                      <Package className="h-4 w-4 mr-2" />
+                      Inventory Management
+                    </Link>
+                  </Button>
                   <Button asChild className="w-full justify-start bg-transparent" variant="outline">
                     <Link href="/admin/transactions/manage">
                       <CreditCard className="h-4 w-4 mr-2" />
