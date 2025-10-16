@@ -15,7 +15,7 @@ Your Next.js application now has a **complete MongoDB backend** integration with
 ### 📁 Files Created/Updated
 ```
 app/api/auth/register/route.ts  - User registration endpoint
-app/api/auth/login/route.ts     - User login endpoint  
+app/api/auth/login/route.ts     - User login endpoint
 app/api/test-db/route.ts        - Database testing endpoint
 app/api/health/route.ts         - MongoDB health check
 lib/mongodb.ts                  - MongoDB connection utility
@@ -34,7 +34,7 @@ x
 ### Option 1: MongoDB Atlas (Recommended - Cloud)
 1. **Create Free Account**: Go to [MongoDB Atlas](https://mongodb.com/atlas)
 2. **Create Cluster**: Choose the free tier
-3. **Get Connection String**: 
+3. **Get Connection String**:
    - Click "Connect" on your cluster
    - Choose "Connect your application"
    - Copy the connection string
@@ -133,7 +133,7 @@ fetch('/api/auth/register', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     name: "John Doe",
-    email: "john@example.com", 
+    email: "john@example.com",
     password: "secure123",
     businessType: "electronics"
   })
