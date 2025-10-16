@@ -14,14 +14,11 @@ import { ArrowLeft, Save, Plus } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useTransactionStore } from "@/lib/transaction-store"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ManageTransaction() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const editId = searchParams.get("edit")
-  const { transactions, addTransaction, updateTransaction } = useTransactionStore()
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -36,22 +33,7 @@ export default function ManageTransaction() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
 
-  // Load transaction for editing
-  useEffect(() => {
-    if (editId) {
-      const transaction = transactions.find((t) => t.id === editId)
-      if (transaction) {
-        setFormData({
-          description: transaction.description,
-          amount: transaction.amount.toString(),
-          category: transaction.category,
-          type: transaction.type,
-          date: transaction.date,
-          notes: transaction.notes || "",
-        })
-      }
-    }
-  }, [editId, transactions])
+  // Note: Edit functionality removed for now - use delete and re-add for modifications
 
   const categories = [
     "Sales",
@@ -114,25 +96,32 @@ export default function ManageTransaction() {
         notes: formData.notes.trim(),
       }
 
-      if (editId) {
-        updateTransaction(editId, transactionData)
-        toast({
-          title: "Transaction updated!",
-          description: "The transaction has been successfully updated.",
-        })
-      } else {
-        addTransaction(transactionData)
-        toast({
-          title: "Transaction added!",
-          description: "The transaction has been successfully added.",
-        })
+      // Call the analytics API to save to MongoDB
+      const response = await fetch('/api/admin/analytics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transactionData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save transaction')
       }
+
+      const result = await response.json()
+
+      toast({
+        title: "Transaction added!",
+        description: "The transaction has been successfully saved to the database.",
+      })
 
       router.push("/admin/transactions")
     } catch (error) {
+      console.error('Transaction save error:', error)
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Failed to save transaction to database. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -163,10 +152,10 @@ export default function ManageTransaction() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {editId ? "Edit Transaction" : "Add New Transaction"}
+                Add New Transaction
               </h1>
               <p className="text-gray-600 mt-2">
-                {editId ? "Update transaction details" : "Enter transaction information"}
+                Enter transaction information
               </p>
             </div>
           </div>
@@ -175,11 +164,11 @@ export default function ManageTransaction() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                {editId ? <Save className="h-5 w-5 mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
+                <Plus className="h-5 w-5 mr-2" />
                 Transaction Details
               </CardTitle>
               <CardDescription>
-                Fill in the information below to {editId ? "update" : "add"} the transaction
+                Fill in the information below to add the transaction
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -283,12 +272,12 @@ export default function ManageTransaction() {
                     {isLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        {editId ? "Updating..." : "Adding..."}
+                        Adding...
                       </>
                     ) : (
                       <>
-                        {editId ? <Save className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                        {editId ? "Update Transaction" : "Add Transaction"}
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Transaction
                       </>
                     )}
                   </Button>

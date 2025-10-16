@@ -2,6 +2,56 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
+// Helper function to update revenue table
+async function updateRevenueTable(db: any) {
+  const orders = db.collection('orders')
+  const offlineSales = db.collection('offline_sales')
+  const revenue = db.collection('revenue')
+
+  // Calculate total revenue from orders
+  const onlineRevenue = await orders.aggregate([
+    {
+      $match: {
+        status: { $ne: 'cancelled' }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$total' }
+      }
+    }
+  ]).toArray()
+
+  // Calculate total revenue from offline sales
+  const offlineRevenue = await offlineSales.aggregate([
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$amount' }
+      }
+    }
+  ]).toArray()
+
+  const totalOnline = onlineRevenue[0]?.total || 0
+  const totalOffline = offlineRevenue[0]?.total || 0
+  const totalRevenue = totalOnline + totalOffline
+
+  // Update revenue table
+  await revenue.updateOne(
+    { _id: 'total_revenue' },
+    {
+      $set: {
+        totalRevenue,
+        totalOnline,
+        totalOffline,
+        lastUpdated: new Date()
+      }
+    },
+    { upsert: true }
+  )
+}
+
 // Get analytics data
 export async function GET(request: NextRequest) {
   try {
@@ -11,11 +61,12 @@ export async function GET(request: NextRequest) {
     const db = await getDb()
     const orders = db.collection('orders')
     const expenses = db.collection('expenses')
+    const offlineSales = db.collection('offline_sales')
     const analytics = db.collection('analytics')
     const inventory = db.collection('inventory')
 
-    // Calculate revenue from orders
-    const revenueData = await orders.aggregate([
+    // Calculate revenue from orders (online sales)
+    const onlineRevenueData = await orders.aggregate([
       {
         $match: {
           status: { $ne: 'cancelled' }
@@ -27,6 +78,17 @@ export async function GET(request: NextRequest) {
           totalRevenue: { $sum: '$total' },
           totalOrders: { $sum: 1 },
           avgOrderValue: { $avg: '$total' }
+        }
+      }
+    ]).toArray()
+
+    // Calculate revenue from offline sales
+    const offlineRevenueData = await offlineSales.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$amount' },
+          totalSales: { $sum: 1 }
         }
       }
     ]).toArray()
@@ -56,6 +118,23 @@ export async function GET(request: NextRequest) {
           },
           revenue: { $sum: '$total' },
           orderCount: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { '_id.year': 1, '_id.month': 1 }
+      }
+    ]).toArray()
+
+    // Get monthly offline sales trends
+    const monthlyOfflineSales = await offlineSales.aggregate([
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          revenue: { $sum: '$amount' },
+          salesCount: { $sum: 1 }
         }
       },
       {
@@ -97,16 +176,44 @@ export async function GET(request: NextRequest) {
     const productCount = await inventory.countDocuments()
 
     // Calculate totals
-    const totalRevenue = revenueData[0]?.totalRevenue || 0
+    const onlineRevenue = onlineRevenueData[0]?.totalRevenue || 0
+    const offlineRevenue = offlineRevenueData[0]?.totalRevenue || 0
+    const totalRevenue = onlineRevenue + offlineRevenue
     const totalExpenses = expenseData[0]?.totalExpenses || 0
     const netProfit = totalRevenue - totalExpenses
     const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
+
+    // Store computed revenue data in revenue collection
+    const revenueCollection = db.collection('revenue')
+    const revenueData = {
+      totalRevenue,
+      onlineRevenue,
+      offlineRevenue,
+      totalExpenses,
+      netProfit,
+      profitMargin,
+      totalOrders: (onlineRevenueData[0]?.totalOrders || 0) + (offlineRevenueData[0]?.totalSales || 0),
+      totalProducts: productCount,
+      period: 'all-time',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+
+    // Upsert the revenue data (update if exists, insert if not)
+    await revenueCollection.updateOne(
+      { period: 'all-time' },
+      {
+        $set: revenueData,
+        $setOnInsert: { _id: new ObjectId() }
+      },
+      { upsert: true }
+    )
 
     // Format monthly data for charts
     const monthlyData = []
     const monthMap = new Map()
 
-    // Add revenue data
+    // Add revenue data (online sales)
     monthlyRevenue.forEach(item => {
       const key = `${item._id.year}-${item._id.month.toString().padStart(2, '0')}`
       monthMap.set(key, {
@@ -115,6 +222,23 @@ export async function GET(request: NextRequest) {
         expenses: 0,
         profit: item.revenue
       })
+    })
+
+    // Add offline sales data
+    monthlyOfflineSales.forEach(item => {
+      const key = `${item._id.year}-${item._id.month.toString().padStart(2, '0')}`
+      if (monthMap.has(key)) {
+        const existing = monthMap.get(key)
+        existing.revenue += item.revenue
+        existing.profit = existing.revenue - existing.expenses
+      } else {
+        monthMap.set(key, {
+          month: new Date(item._id.year, item._id.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          revenue: item.revenue,
+          expenses: 0,
+          profit: item.revenue
+        })
+      }
     })
 
     // Add expense data
@@ -147,8 +271,8 @@ export async function GET(request: NextRequest) {
           totalExpenses,
           netProfit,
           profitMargin: parseFloat(profitMargin.toFixed(2)),
-          totalOrders: revenueData[0]?.totalOrders || 0,
-          avgOrderValue: parseFloat((revenueData[0]?.avgOrderValue || 0).toFixed(2)),
+          totalOrders: (onlineRevenueData[0]?.totalOrders || 0) + (offlineRevenueData[0]?.totalSales || 0),
+          avgOrderValue: parseFloat((onlineRevenueData[0]?.avgOrderValue || 0).toFixed(2)),
           totalProducts: productCount
         },
         chartData,
@@ -185,7 +309,7 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb()
-    const collection = type === 'expense' ? db.collection('expenses') : db.collection('revenue')
+    const collection = type === 'expense' ? db.collection('expenses') : db.collection('offline_sales')
 
     const entry = {
       _id: new ObjectId(),
@@ -200,6 +324,9 @@ export async function POST(request: NextRequest) {
     }
 
     await collection.insertOne(entry)
+
+    // Update revenue table after adding new transaction
+    await updateRevenueTable(db)
 
     return NextResponse.json({
       success: true,
@@ -226,7 +353,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const db = await getDb()
-    const collection = type === 'expense' ? db.collection('expenses') : db.collection('revenue')
+    const collection = type === 'expense' ? db.collection('expenses') : db.collection('offline_sales')
 
     const updateData: any = { updatedAt: new Date() }
     if (description) updateData.description = description
@@ -239,6 +366,9 @@ export async function PUT(request: NextRequest) {
       { _id: new ObjectId(id) },
       { $set: updateData }
     )
+
+    // Update revenue table after updating transaction
+    await updateRevenueTable(db)
 
     return NextResponse.json({
       success: true,
@@ -265,9 +395,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     const db = await getDb()
-    const collection = type === 'expense' ? db.collection('expenses') : db.collection('revenue')
+    const collection = type === 'expense' ? db.collection('expenses') : db.collection('offline_sales')
 
     await collection.deleteOne({ _id: new ObjectId(id) })
+
+    // Update revenue table after deleting transaction
+    await updateRevenueTable(db)
 
     return NextResponse.json({
       success: true,
