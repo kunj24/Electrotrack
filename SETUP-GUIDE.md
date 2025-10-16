@@ -21,7 +21,7 @@ This is a complete e-commerce platform built with Next.js 15, MongoDB, and Razor
 2. Create a free account and new cluster
 3. Click "Connect" on your cluster
 4. Choose "Connect your application"
-5. Copy the connection string (looks like: `mongodb+srv://username:password@cluster.mongodb.net/`)
+5. Copy the connection string
 
 #### Option B: Local MongoDB
 1. Download and install [MongoDB Community Server](https://www.mongodb.com/try/download/community)
