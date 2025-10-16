@@ -15,27 +15,70 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, TrendingUp, TrendingDown, Calendar } from "lucide-react"
+import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, TrendingUp, TrendingDown, Calendar, RefreshCw, Activity } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
-import { useTransactionStore } from "@/lib/transaction-store"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 
+interface Transaction {
+  id: string
+  description: string
+  amount: number
+  category: string
+  type: "income" | "expense"
+  date: string
+  notes?: string
+  source: "online" | "offline" | "expense"
+  createdAt: string
+  updatedAt: string
+}
+
 export default function AdminTransactions() {
-  const { transactions, deleteTransaction } = useTransactionStore()
   const { toast } = useToast()
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")
+  const [filterSource, setFilterSource] = useState<"all" | "online" | "offline" | "expense">("all")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [isExporting, setIsExporting] = useState(false)
 
+  // Fetch transactions from API
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch('/api/admin/all-transactions')
+      const data = await response.json()
+
+      if (data.success) {
+        setTransactions(data.transactions)
+      } else {
+        setError('Failed to fetch transactions')
+      }
+    } catch (err) {
+      console.error('Error fetching transactions:', err)
+      setError('Failed to load transactions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTransactions()
+  }, [])
+
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch =
       transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.category.toLowerCase().includes(searchTerm.toLowerCase())
+      transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (transaction.notes && transaction.notes.toLowerCase().includes(searchTerm.toLowerCase()))
+
     const matchesFilter = filterType === "all" || transaction.type === filterType
-    
+    const matchesSource = filterSource === "all" || transaction.source === filterSource
+
     // Date range filtering
     let matchesDateRange = true
     if (startDate || endDate) {
@@ -49,11 +92,8 @@ export default function AdminTransactions() {
       }
     }
 
-    return matchesSearch && matchesFilter && matchesDateRange
-  }).filter((transaction, index, self) => 
-    // Remove duplicates based on ID
-    index === self.findIndex(t => t.id === transaction.id)
-  )
+    return matchesSearch && matchesFilter && matchesSource && matchesDateRange
+  })
 
   const handleExportCSV = async () => {
     if (filteredTransactions.length === 0) {
@@ -143,9 +183,12 @@ export default function AdminTransactions() {
   }
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this transaction?")) {
-      deleteTransaction(id)
-    }
+    // Delete functionality not implemented for MongoDB data
+    toast({
+      title: "Delete not available",
+      description: "Delete functionality is not available for MongoDB transactions.",
+      variant: "destructive"
+    })
   }
 
   return (
@@ -168,6 +211,62 @@ export default function AdminTransactions() {
             </Button>
           </div>
 
+          {/* Summary Stats */}
+          {!loading && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Transactions</p>
+                      <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
+                    </div>
+                    <Activity className="h-8 w-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Online Sales</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {transactions.filter(t => t.source === 'online').length}
+                      </p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Offline Sales</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {transactions.filter(t => t.source === 'offline').length}
+                      </p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Expenses</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {transactions.filter(t => t.source === 'expense').length}
+                      </p>
+                    </div>
+                    <TrendingDown className="h-8 w-8 text-red-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Filters and Search */}
           <Card className="mb-6">
             <CardContent className="p-6">
@@ -189,15 +288,16 @@ export default function AdminTransactions() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="w-full sm:w-auto">
                         <Filter className="h-4 w-4 mr-2" />
-                        Filter: {filterType === "all" ? "All" : filterType === "income" ? "Income" : "Expenses"}
+                        Source: {filterSource === "all" ? "All" : filterSource === "online" ? "Online Sales" : filterSource === "offline" ? "Offline Sales" : "Expenses"}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuLabel>Filter by Type</DropdownMenuLabel>
+                      <DropdownMenuLabel>Filter by Source</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setFilterType("all")}>All Transactions</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setFilterType("income")}>Income Only</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setFilterType("expense")}>Expenses Only</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterSource("all")}>All Sources</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterSource("online")}>Online Sales</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterSource("offline")}>Offline Sales</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterSource("expense")}>Expenses</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -282,6 +382,15 @@ export default function AdminTransactions() {
                       </Button>
                       <Button 
                         variant="outline" 
+                        onClick={fetchTransactions}
+                        disabled={loading}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
+                      <Button 
+                        variant="outline" 
                         onClick={handleExportCSV}
                         disabled={isExporting || filteredTransactions.length === 0}
                         className="flex-1 sm:flex-none"
@@ -301,17 +410,31 @@ export default function AdminTransactions() {
             <CardHeader>
               <CardTitle>All Transactions</CardTitle>
               <CardDescription>
-                {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? "s" : ""} found
+                {loading ? "Loading transactions..." : `${filteredTransactions.length} transaction${filteredTransactions.length !== 1 ? "s" : ""} found`}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredTransactions.length > 0 ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-gray-600">Loading transactions...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <Button onClick={fetchTransactions} variant="outline">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              ) : filteredTransactions.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Category</TableHead>
+                      <TableHead>Source</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
@@ -341,6 +464,19 @@ export default function AdminTransactions() {
                           <TableCell className="font-medium">{transaction.description}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{transaction.category}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="secondary"
+                              className={
+                                transaction.source === "online" ? "bg-blue-100 text-blue-800" :
+                                transaction.source === "offline" ? "bg-green-100 text-green-800" :
+                                "bg-orange-100 text-orange-800"
+                              }
+                            >
+                              {transaction.source === "online" ? "Online" :
+                               transaction.source === "offline" ? "Offline" : "Expense"}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center">
