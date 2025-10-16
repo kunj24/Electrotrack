@@ -15,7 +15,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, TrendingUp, TrendingDown, Calendar, RefreshCw, Activity } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
+import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash2, TrendingUp, TrendingDown, Calendar, RefreshCw, Activity, Eye, Package, User, CreditCard, MapPin, Phone, Mail } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -31,6 +39,25 @@ interface Transaction {
   source: "online" | "offline" | "expense"
   createdAt: string
   updatedAt: string
+  details?: {
+    orderId: string
+    customerName: string
+    customerEmail: string
+    customerPhone: string
+    items: any[]
+    total: number
+    subtotal: number
+    tax: number
+    shipping: number
+    discount: number
+    paymentMethod: string
+    paymentStatus: string
+    orderStatus: string
+    shippingAddress: any
+    billingAddress: any
+    trackingNumber: string
+    estimatedDelivery: string | null
+  }
 }
 
 export default function AdminTransactions() {
@@ -44,6 +71,8 @@ export default function AdminTransactions() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [isExporting, setIsExporting] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
 
   // Fetch transactions from API
   const fetchTransactions = async () => {
@@ -124,8 +153,8 @@ export default function AdminTransactions() {
 
       if (data.success) {
         // Create and download the CSV file
-        const blob = new Blob([data.csvContent], { 
-          type: 'text/csv;charset=utf-8;' 
+        const blob = new Blob([data.csvContent], {
+          type: 'text/csv;charset=utf-8;'
         })
         const link = document.createElement('a')
         const url = URL.createObjectURL(blob)
@@ -135,7 +164,7 @@ export default function AdminTransactions() {
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-        
+
         // Clean up the URL object
         URL.revokeObjectURL(url)
 
@@ -180,6 +209,11 @@ export default function AdminTransactions() {
         setEndDate(now.toISOString().split('T')[0])
         break
     }
+  }
+
+  const handleViewDetails = (transaction: Transaction) => {
+    setSelectedTransaction(transaction)
+    setShowDetailsModal(true)
   }
 
   const handleDelete = (id: string) => {
@@ -301,37 +335,37 @@ export default function AdminTransactions() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                
+
                 {/* Date Range and Export Row */}
                 <div className="flex flex-col space-y-4">
                   {/* Quick Date Range Buttons */}
                   <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => setDateRange('thisMonth')}
                       className="text-xs"
                     >
                       This Month
                     </Button>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => setDateRange('lastMonth')}
                       className="text-xs"
                     >
                       Last Month
                     </Button>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => setDateRange('last30Days')}
                       className="text-xs"
                     >
                       Last 30 Days
                     </Button>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => setDateRange('thisYear')}
                       className="text-xs"
@@ -339,7 +373,7 @@ export default function AdminTransactions() {
                       This Year
                     </Button>
                   </div>
-                  
+
                   {/* Custom Date Range and Export */}
                   <div className="flex flex-col sm:flex-row gap-4 items-end">
                     <div className="flex flex-col sm:flex-row gap-4 flex-1">
@@ -369,8 +403,8 @@ export default function AdminTransactions() {
                       </div>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setStartDate("")
                           setEndDate("")
@@ -380,8 +414,8 @@ export default function AdminTransactions() {
                         <Calendar className="h-4 w-4 mr-2" />
                         Clear Dates
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={fetchTransactions}
                         disabled={loading}
                         className="flex-1 sm:flex-none"
@@ -389,8 +423,8 @@ export default function AdminTransactions() {
                         <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={handleExportCSV}
                         disabled={isExporting || filteredTransactions.length === 0}
                         className="flex-1 sm:flex-none"
@@ -449,7 +483,7 @@ export default function AdminTransactions() {
                             <div className="font-medium">
                               {new Date(transaction.date).toLocaleDateString('en-GB', {
                                 day: '2-digit',
-                                month: '2-digit', 
+                                month: '2-digit',
                                 year: 'numeric'
                               })}
                             </div>
@@ -466,7 +500,7 @@ export default function AdminTransactions() {
                             <Badge variant="outline">{transaction.category}</Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge 
+                            <Badge
                               variant="secondary"
                               className={
                                 transaction.source === "online" ? "bg-blue-100 text-blue-800" :
@@ -508,12 +542,19 @@ export default function AdminTransactions() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin/transactions/manage?edit=${transaction.id}`}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </Link>
-                                </DropdownMenuItem>
+                                {transaction.source === 'online' ? (
+                                  <DropdownMenuItem onClick={() => handleViewDetails(transaction)}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/admin/transactions/manage?edit=${transaction.id}`}>
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </Link>
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem onClick={() => handleDelete(transaction.id)} className="text-red-600">
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete
@@ -548,6 +589,169 @@ export default function AdminTransactions() {
           </Card>
         </main>
       </div>
+
+      {/* Order Details Modal */}
+      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Order Details - {selectedTransaction?.description}
+            </DialogTitle>
+            <DialogDescription>
+              Complete information about this online order
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedTransaction?.details && (
+            <div className="space-y-6">
+              {/* Order Status and Payment */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Payment Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Method:</span>
+                      <Badge variant="outline">{selectedTransaction.details.paymentMethod}</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <Badge variant={selectedTransaction.details.paymentStatus === 'completed' ? 'default' : 'secondary'}>
+                        {selectedTransaction.details.paymentStatus}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Order Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <Badge variant={selectedTransaction.details.orderStatus === 'completed' ? 'default' : 'secondary'}>
+                        {selectedTransaction.details.orderStatus}
+                      </Badge>
+                    </div>
+                    {selectedTransaction.details.trackingNumber !== 'N/A' && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Tracking:</span>
+                        <span className="text-sm font-mono">{selectedTransaction.details.trackingNumber}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Customer Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Customer Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium">{selectedTransaction.details.customerName}</p>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                        <Mail className="h-3 w-3" />
+                        {selectedTransaction.details.customerEmail}
+                      </div>
+                      {selectedTransaction.details.customerPhone !== 'N/A' && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                          <Phone className="h-3 w-3" />
+                          {selectedTransaction.details.customerPhone}
+                        </div>
+                      )}
+                    </div>
+                    {selectedTransaction.details.shippingAddress && Object.keys(selectedTransaction.details.shippingAddress).length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <MapPin className="h-3 w-3" />
+                          Shipping Address
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {selectedTransaction.details.shippingAddress.street && `${selectedTransaction.details.shippingAddress.street}, `}
+                          {selectedTransaction.details.shippingAddress.city && `${selectedTransaction.details.shippingAddress.city}, `}
+                          {selectedTransaction.details.shippingAddress.state && `${selectedTransaction.details.shippingAddress.state} `}
+                          {selectedTransaction.details.shippingAddress.zipCode && selectedTransaction.details.shippingAddress.zipCode}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Order Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Order Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {selectedTransaction.details.items.map((item: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{item.name || item.productName}</p>
+                          <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">₹{item.price?.toLocaleString() || '0'}</p>
+                          <p className="text-sm text-gray-600">Subtotal: ₹{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Order Summary */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span>₹{selectedTransaction.details.subtotal?.toLocaleString() || '0'}</span>
+                    </div>
+                    {selectedTransaction.details.shipping > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Shipping:</span>
+                        <span>₹{selectedTransaction.details.shipping?.toLocaleString() || '0'}</span>
+                      </div>
+                    )}
+                    {selectedTransaction.details.tax > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Tax:</span>
+                        <span>₹{selectedTransaction.details.tax?.toLocaleString() || '0'}</span>
+                      </div>
+                    )}
+                    {selectedTransaction.details.discount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Discount:</span>
+                        <span>-₹{selectedTransaction.details.discount?.toLocaleString() || '0'}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-medium text-lg">
+                      <span>Total:</span>
+                      <span>₹{selectedTransaction.details.total?.toLocaleString() || '0'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminRouteGuard>
   )
 }
