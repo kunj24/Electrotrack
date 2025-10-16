@@ -25,7 +25,35 @@ export async function GET(request: NextRequest) {
     const allTransactions: any[] = []
 
     // Add online orders with detailed information
-    orders.forEach((order: any) => {
+    for (const order of orders) {
+      // Lookup user details by email
+      let customerName = 'N/A'
+      let customerEmail = order.userEmail || 'N/A'
+      let customerPhone = 'N/A'
+
+      if (order.userEmail) {
+        const user = await db.collection('users').findOne({ email: order.userEmail })
+        if (user) {
+          customerName = user.name || 'N/A'
+        }
+      }
+
+      // Extract shipping address details
+      const shippingAddress = order.shippingAddress || {}
+      if (shippingAddress.phone) {
+        customerPhone = shippingAddress.phone
+      }
+
+      // Format shipping address for the modal
+      const formattedShippingAddress = {
+        street: shippingAddress.address || '',
+        city: shippingAddress.city || '',
+        state: shippingAddress.state || '',
+        zipCode: shippingAddress.pincode || '',
+        fullName: shippingAddress.fullName || '',
+        phone: shippingAddress.phone || ''
+      }
+
       const itemsDetails = (order.items || []).map((item: any) =>
         `${item.name || item.productName} (x${item.quantity})`
       ).join(', ')
@@ -37,16 +65,16 @@ export async function GET(request: NextRequest) {
         category: 'Online Sales',
         type: 'income',
         date: order.createdAt || new Date(),
-        notes: `Customer: ${order.customerName || order.userId || 'N/A'} | Items: ${itemsDetails || 'N/A'} | Payment: ${order.paymentMethod || 'N/A'} | Status: ${order.status || 'completed'}`,
+        notes: `Customer: ${customerName} | Items: ${itemsDetails || 'N/A'} | Payment: ${order.paymentMethod || 'N/A'} | Status: ${order.status || 'completed'}`,
         source: 'online',
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
         // Additional detailed information
         details: {
           orderId: order._id.toString(),
-          customerName: order.customerName || 'N/A',
-          customerEmail: order.customerEmail || 'N/A',
-          customerPhone: order.customerPhone || 'N/A',
+          customerName: customerName,
+          customerEmail: customerEmail,
+          customerPhone: customerPhone,
           items: order.items || [],
           total: order.total || 0,
           subtotal: order.subtotal || 0,
@@ -56,13 +84,13 @@ export async function GET(request: NextRequest) {
           paymentMethod: order.paymentMethod || 'N/A',
           paymentStatus: order.paymentStatus || 'completed',
           orderStatus: order.status || 'completed',
-          shippingAddress: order.shippingAddress || {},
+          shippingAddress: formattedShippingAddress,
           billingAddress: order.billingAddress || {},
           trackingNumber: order.trackingNumber || 'N/A',
           estimatedDelivery: order.estimatedDelivery || null,
         }
       })
-    })
+    }
 
     // Add offline sales
     offlineSales.forEach(sale => {
