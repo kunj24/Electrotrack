@@ -28,17 +28,6 @@ const initialTransactions: Transaction[] = [
     updatedAt: "2024-01-15T10:30:00Z",
   },
   {
-    id: "2",
-    description: "Store Rent",
-    amount: 25000,
-    category: "Rent",
-    type: "expense",
-    date: "2024-01-01",
-    notes: "Monthly store rent payment",
-    createdAt: "2024-01-01T09:00:00Z",
-    updatedAt: "2024-01-01T09:00:00Z",
-  },
-  {
     id: "3",
     description: "LG AC Sale",
     amount: 28999,
@@ -75,6 +64,11 @@ class TransactionStore {
     const stored = localStorage.getItem("radhika_transactions")
     if (stored) {
       this.transactions = JSON.parse(stored)
+      // Remove the Store Rent transaction if it exists (migration)
+      this.transactions = this.transactions.filter(t => 
+        !(t.description === "Store Rent" && t.amount === 25000 && t.category === "Rent")
+      )
+      this.saveTransactions() // Save the cleaned data
     } else {
       this.transactions = initialTransactions
       this.saveTransactions()
@@ -147,9 +141,18 @@ export function useTransactionStore() {
     // Load from localStorage or use initial data
     const stored = localStorage.getItem("radhika_transactions")
     if (stored) {
-      setTransactions(JSON.parse(stored))
+      const parsedTransactions = JSON.parse(stored)
+      // Remove the Store Rent transaction if it exists (migration)
+      const cleanedTransactions = parsedTransactions.filter((t: Transaction) => 
+        !(t.description === "Store Rent" && t.amount === 25000 && t.category === "Rent")
+      )
+      setTransactions(cleanedTransactions)
+      // Save the cleaned data back to localStorage
+      localStorage.setItem("radhika_transactions", JSON.stringify(cleanedTransactions))
     } else {
       setTransactions(initialTransactions)
+      // Save initial data to localStorage
+      localStorage.setItem("radhika_transactions", JSON.stringify(initialTransactions))
     }
   }, [])
 
