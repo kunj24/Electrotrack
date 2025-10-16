@@ -40,7 +40,7 @@ x
    - Copy the connection string
 4. **Update .env.local**:
    ```env
-   MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/radhika_electronics?retryWrites=true&w=majority&appName=RadhikaElectronics
+   MONGODB_URI=your_mongodb_connection_string_here
    MONGODB_DB=radhika_electronics
    ```
 5. **Test**: Visit `http://localhost:3000/api/health`
