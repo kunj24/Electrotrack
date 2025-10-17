@@ -48,10 +48,8 @@ interface AnalyticsData {
 export default function AdminAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [userStats, setUserStats] = useState({ totalUsers: 0, activeSessions: 0 })
 
   useEffect(() => {
-    fetchUserStats()
     fetchAnalytics()
   }, [])
 
@@ -84,8 +82,8 @@ export default function AdminAnalytics() {
           totalProfit: analytics.summary.netProfit,
           totalOrders: analytics.summary.totalOrders,
           totalProducts: analytics.summary.totalProducts || 0,
-          totalUsers: userStats.totalUsers,
-          activeSessions: userStats.activeSessions,
+          totalUsers: analytics.summary.totalUsers || 0,
+          activeSessions: analytics.summary.activeSessions || 0,
           recentTransactions: [],
           chartData,
           pieData,
@@ -111,21 +109,6 @@ export default function AdminAnalytics() {
       })
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchUserStats = async () => {
-    try {
-      const response = await fetch('/api/admin/user-stats')
-      if (response.ok) {
-        const stats = await response.json()
-        setUserStats({
-          totalUsers: stats.totalUsers,
-          activeSessions: stats.activeSessions
-        })
-      }
-    } catch (error) {
-      console.error('Error fetching user stats:', error)
     }
   }
 
