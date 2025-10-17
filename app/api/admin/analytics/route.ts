@@ -175,6 +175,68 @@ export async function GET(request: NextRequest) {
     // Get total product count from inventory
     const productCount = await inventory.countDocuments()
 
+    // Count total users from different collections
+    const usersCollection = db.collection('users')
+    const accountsCollection = db.collection('accounts') // NextAuth accounts
+    const sessionsCollection = db.collection('sessions') // NextAuth sessions
+
+    // Get total registered users (from both custom users and OAuth users)
+    let customUsers = 0
+    let oauthUsers = 0
+    let activeSessions = 0
+
+    try {
+      customUsers = await usersCollection.countDocuments({})
+    } catch (error) {
+      console.log('Custom users collection not found or empty')
+    }
+
+    try {
+      oauthUsers = await accountsCollection.countDocuments({})
+    } catch (error) {
+      console.log('OAuth accounts collection not found or empty')
+    }
+
+    try {
+      activeSessions = await sessionsCollection.countDocuments({
+        expires: { $gt: new Date() }
+      })
+    } catch (error) {
+      console.log('Sessions collection not found or empty')
+    }
+
+    // Get unique users (avoid double counting if user has both custom and OAuth account)
+    const allUserEmails = new Set<string>()
+
+    // Add custom user emails
+    try {
+      const customUserEmails = await usersCollection.find({}, { projection: { email: 1 } }).toArray()
+      customUserEmails.forEach((user: any) => {
+        if (user.email) allUserEmails.add(user.email.toLowerCase())
+      })
+    } catch (error) {
+      console.log('Error fetching custom user emails:', error)
+    }
+
+    // Add OAuth user emails
+    try {
+      const oauthAccounts = await accountsCollection.find({}, { projection: { userId: 1 } }).toArray()
+      for (const account of oauthAccounts) {
+        if (account.userId) {
+          // Get user details from NextAuth users collection
+          const userDoc = await db.collection('users').findOne({ _id: new ObjectId(account.userId) })
+          if (userDoc?.email) {
+            allUserEmails.add(userDoc.email.toLowerCase())
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Error fetching OAuth user emails:', error)
+    }
+
+    // Calculate total unique users
+    const totalUsers = allUserEmails.size > 0 ? allUserEmails.size : (customUsers + oauthUsers)
+
     // Calculate totals
     const onlineRevenue = onlineRevenueData[0]?.totalRevenue || 0
     const offlineRevenue = offlineRevenueData[0]?.totalRevenue || 0
@@ -273,7 +335,9 @@ export async function GET(request: NextRequest) {
           profitMargin: parseFloat(profitMargin.toFixed(2)),
           totalOrders: (onlineRevenueData[0]?.totalOrders || 0) + (offlineRevenueData[0]?.totalSales || 0),
           avgOrderValue: parseFloat((onlineRevenueData[0]?.avgOrderValue || 0).toFixed(2)),
-          totalProducts: productCount
+          totalProducts: productCount,
+          totalUsers,
+          activeSessions
         },
         chartData,
         categoryData: categoryExpenses.map(cat => ({
