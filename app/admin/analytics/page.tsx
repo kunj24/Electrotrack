@@ -5,7 +5,8 @@ import { AdminRouteGuard } from "@/components/admin-route-guard"
 import { AdminHeader } from "@/components/admin-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users, BarChart3, LineChart, PieChart } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Package, Users, BarChart3, LineChart, PieChart, Calendar } from "lucide-react"
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -22,14 +23,31 @@ import {
   Legend
 } from 'recharts'
 
-// Chart colors
+// Enhanced Chart colors with gradients
 const COLORS = {
   revenue: '#10b981',
   expenses: '#ef4444',
-  profit: '#3b82f6'
+  profit: '#3b82f6',
+  revenueGradient: 'url(#revenueGradient)',
+  expenseGradient: 'url(#expenseGradient)',
+  profitGradient: 'url(#profitGradient)'
 }
 
-const PIE_COLORS = ['#10b981', '#ef4444', '#3b82f6']
+const PIE_COLORS = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6']
+
+// Professional chart styling
+const chartConfig = {
+  margin: { top: 20, right: 30, left: 20, bottom: 20 },
+  gridStyle: { strokeDasharray: '3 3', opacity: 0.2 },
+  axisStyle: { fontSize: 12, fill: '#6b7280' },
+  tooltipStyle: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+    padding: '8px 12px'
+  }
+}
 
 interface AnalyticsData {
   totalRevenue: number
@@ -45,18 +63,29 @@ interface AnalyticsData {
   monthlyData: any[]
 }
 
+type TimePeriod = 'day' | 'week' | 'month' | 'quarter' | 'year'
+
 export default function AdminAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('month')
 
   useEffect(() => {
-    fetchAnalytics()
-  }, [])
+    fetchAnalytics(selectedPeriod)
+  }, [selectedPeriod])
 
-  const fetchAnalytics = async () => {
+  const timePeriods: { value: TimePeriod; label: string }[] = [
+    { value: 'day', label: 'Today' },
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'quarter', label: 'This Quarter' },
+    { value: 'year', label: 'This Year' }
+  ]
+
+  const fetchAnalytics = async (period: TimePeriod = 'month') => {
     try {
       setLoading(true)
-      const response = await fetch('/api/admin/analytics')
+      const response = await fetch(`/api/admin/analytics?period=${period}`)
       if (!response.ok) throw new Error('Failed to fetch analytics')
       const result = await response.json()
 
@@ -140,14 +169,34 @@ export default function AdminAnalytics() {
     <AdminRouteGuard>
       <AdminHeader />
       <div className="p-6 space-y-6">
-        <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+
+          {/* Time Period Selector */}
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-500" />
+            <div className="flex flex-wrap gap-1">
+              {timePeriods.map((period) => (
+                <Button
+                  key={period.value}
+                  variant={selectedPeriod === period.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedPeriod(period.value)}
+                  className="text-xs"
+                >
+                  {period.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-5 w-5 text-green-600" />
+              <IndianRupee className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">₹{data.totalRevenue.toLocaleString('en-IN')}</div>
@@ -220,35 +269,52 @@ export default function AdminAnalytics() {
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-6 w-6 text-blue-600" />
                 Financial Overview
+                <Badge variant="secondary" className="ml-auto">
+                  {timePeriods.find(p => p.value === selectedPeriod)?.label}
+                </Badge>
               </CardTitle>
-              <CardDescription>Revenue, Expenses & Profit comparison</CardDescription>
+              <CardDescription>Revenue, Expenses & Profit comparison for {timePeriods.find(p => p.value === selectedPeriod)?.label.toLowerCase()}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px] w-full">
+              <div className="h-[450px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <BarChart data={data.chartData} margin={chartConfig.margin}>
+                    <defs>
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.3}/>
+                      </linearGradient>
+                      <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.3}/>
+                      </linearGradient>
+                      <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid {...chartConfig.gridStyle} />
                     <XAxis
                       dataKey="name"
-                      fontSize={12}
-                      tick={{ fill: '#666' }}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={chartConfig.axisStyle}
+                      dy={10}
                     />
                     <YAxis
                       tickFormatter={(value) => `₹${(value/1000).toFixed(0)}K`}
-                      fontSize={12}
-                      tick={{ fill: '#666' }}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={chartConfig.axisStyle}
+                      width={80}
                     />
                     <Tooltip
-                      formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
-                      labelStyle={{ color: '#000', fontWeight: 'bold' }}
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #ccc',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                      }}
+                      formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, name]}
+                      labelStyle={{ color: '#1f2937', fontWeight: '600', marginBottom: '4px' }}
+                      contentStyle={chartConfig.tooltipStyle}
+                      cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
                     />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={60}>
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={80}>
                       {data.chartData.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -265,11 +331,14 @@ export default function AdminAnalytics() {
               <CardTitle className="flex items-center gap-2">
                 <PieChart className="h-6 w-6 text-green-600" />
                 Revenue Distribution
+                <Badge variant="secondary" className="ml-auto">
+                  {timePeriods.find(p => p.value === selectedPeriod)?.label}
+                </Badge>
               </CardTitle>
-              <CardDescription>Revenue vs Expenses breakdown</CardDescription>
+              <CardDescription>Revenue vs Expenses breakdown for {timePeriods.find(p => p.value === selectedPeriod)?.label.toLowerCase()}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px] w-full">
+              <div className="h-[450px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsPieChart>
                     <Pie
@@ -280,22 +349,22 @@ export default function AdminAnalytics() {
                       label={({ name, percent }: { name: string; percent?: number }) =>
                         `${name} ${percent ? (percent * 100).toFixed(0) : '0'}%`
                       }
-                      outerRadius={120}
-                      innerRadius={40}
+                      outerRadius={140}
+                      innerRadius={60}
                       dataKey="value"
+                      stroke="#ffffff"
+                      strokeWidth={3}
                     >
                       {data.pieData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #ccc',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                      }}
+                      formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, name]}
+                      contentStyle={chartConfig.tooltipStyle}
                     />
                     <Legend
                       wrapperStyle={{ paddingTop: '20px' }}
@@ -313,34 +382,36 @@ export default function AdminAnalytics() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LineChart className="h-6 w-6 text-purple-600" />
-              Monthly Financial Trends
+              Financial Trends
+              <Badge variant="secondary" className="ml-auto">
+                {timePeriods.find(p => p.value === selectedPeriod)?.label}
+              </Badge>
             </CardTitle>
-            <CardDescription>6-month revenue, expenses & profit trends</CardDescription>
+            <CardDescription>Revenue, expenses & profit trends for {timePeriods.find(p => p.value === selectedPeriod)?.label.toLowerCase()}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[500px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <RechartsLineChart data={data.monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <RechartsLineChart data={data.monthlyData} margin={chartConfig.margin}>
+                  <CartesianGrid {...chartConfig.gridStyle} />
                   <XAxis
                     dataKey="month"
-                    fontSize={12}
-                    tick={{ fill: '#666' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={chartConfig.axisStyle}
+                    dy={10}
                   />
                   <YAxis
                     tickFormatter={(value) => `₹${(value/1000).toFixed(0)}K`}
-                    fontSize={12}
-                    tick={{ fill: '#666' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={chartConfig.axisStyle}
+                    width={80}
                   />
                   <Tooltip
-                    formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
-                    labelStyle={{ color: '#000', fontWeight: 'bold' }}
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
+                    formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, name]}
+                    labelStyle={{ color: '#1f2937', fontWeight: '600', marginBottom: '4px' }}
+                    contentStyle={chartConfig.tooltipStyle}
                   />
                   <Legend
                     wrapperStyle={{ paddingTop: '20px' }}
@@ -350,28 +421,31 @@ export default function AdminAnalytics() {
                     type="monotone"
                     dataKey="revenue"
                     stroke={COLORS.revenue}
-                    strokeWidth={4}
+                    strokeWidth={3}
                     name="Revenue"
-                    dot={{ fill: COLORS.revenue, strokeWidth: 2, r: 6 }}
-                    activeDot={{ r: 8, strokeWidth: 2 }}
+                    dot={{ fill: COLORS.revenue, strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 8, strokeWidth: 3, fill: COLORS.revenue, stroke: '#ffffff' }}
+                    strokeDasharray="0"
                   />
                   <Line
                     type="monotone"
                     dataKey="expenses"
                     stroke={COLORS.expenses}
-                    strokeWidth={4}
+                    strokeWidth={3}
                     name="Expenses"
-                    dot={{ fill: COLORS.expenses, strokeWidth: 2, r: 6 }}
-                    activeDot={{ r: 8, strokeWidth: 2 }}
+                    dot={{ fill: COLORS.expenses, strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 8, strokeWidth: 3, fill: COLORS.expenses, stroke: '#ffffff' }}
+                    strokeDasharray="0"
                   />
                   <Line
                     type="monotone"
                     dataKey="profit"
                     stroke={COLORS.profit}
-                    strokeWidth={4}
+                    strokeWidth={3}
                     name="Profit"
-                    dot={{ fill: COLORS.profit, strokeWidth: 2, r: 6 }}
-                    activeDot={{ r: 8, strokeWidth: 2 }}
+                    dot={{ fill: COLORS.profit, strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 8, strokeWidth: 3, fill: COLORS.profit, stroke: '#ffffff' }}
+                    strokeDasharray="0"
                   />
                 </RechartsLineChart>
               </ResponsiveContainer>

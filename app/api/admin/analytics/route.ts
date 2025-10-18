@@ -52,11 +52,43 @@ async function updateRevenueTable(db: any) {
   )
 }
 
+// Helper function to get date range based on period
+function getDateRange(period: string) {
+  const now = new Date()
+  let startDate = new Date()
+
+  switch (period) {
+    case 'day':
+      startDate.setHours(0, 0, 0, 0)
+      break
+    case 'week':
+      const weekStart = now.getDate() - now.getDay()
+      startDate = new Date(now.setDate(weekStart))
+      startDate.setHours(0, 0, 0, 0)
+      break
+    case 'month':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      break
+    case 'quarter':
+      const quarter = Math.floor(now.getMonth() / 3)
+      startDate = new Date(now.getFullYear(), quarter * 3, 1)
+      break
+    case 'year':
+      startDate = new Date(now.getFullYear(), 0, 1)
+      break
+    default:
+      startDate = new Date(0) // All time
+  }
+
+  return { startDate, endDate: now }
+}
+
 // Get analytics data
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url)
-    const period = url.searchParams.get('period') || 'monthly' // daily, weekly, monthly, yearly
+    const period = url.searchParams.get('period') || 'month'
+    const { startDate, endDate } = getDateRange(period)
 
     const db = await getDb()
     const orders = db.collection('orders')
@@ -65,11 +97,17 @@ export async function GET(request: NextRequest) {
     const analytics = db.collection('analytics')
     const inventory = db.collection('inventory')
 
+    // Date filter for time-based queries
+    const dateFilter = period === 'month' ? {} : {
+      createdAt: { $gte: startDate, $lte: endDate }
+    }
+
     // Calculate revenue from orders (online sales)
     const onlineRevenueData = await orders.aggregate([
       {
         $match: {
-          status: { $ne: 'cancelled' }
+          status: { $ne: 'cancelled' },
+          ...dateFilter
         }
       },
       {
@@ -85,6 +123,9 @@ export async function GET(request: NextRequest) {
     // Calculate revenue from offline sales
     const offlineRevenueData = await offlineSales.aggregate([
       {
+        $match: dateFilter
+      },
+      {
         $group: {
           _id: null,
           totalRevenue: { $sum: '$amount' },
@@ -95,6 +136,9 @@ export async function GET(request: NextRequest) {
 
     // Calculate total expenses
     const expenseData = await expenses.aggregate([
+      {
+        $match: dateFilter
+      },
       {
         $group: {
           _id: null,
