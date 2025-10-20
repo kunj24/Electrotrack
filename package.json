@@ -41,6 +41,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/mongoose": "^5.11.96",
     "@types/nodemailer": "^7.0.1",
+    "apexcharts": "^5.3.5",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
@@ -60,6 +61,7 @@
     "nodemailer": "^7.0.6",
     "razorpay": "^2.9.6",
     "react": "^19",
+    "react-apexcharts": "^1.8.0",
     "react-day-picker": "9.8.0",
     "react-dom": "^19",
     "react-hook-form": "^7.54.1",
@@ -73,11 +75,15 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/ui": "^3.2.4",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }
