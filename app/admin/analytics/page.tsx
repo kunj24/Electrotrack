@@ -453,32 +453,7 @@ export default function AdminAnalytics() {
           </CardContent>
         </Card>
 
-        {/* Recent Transactions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Latest order activity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {data.recentTransactions && data.recentTransactions.length > 0 ? (
-              <div className="space-y-4">
-                {data.recentTransactions.map((transaction, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 border rounded">
-                    <div>
-                      <p className="font-medium">{transaction.customerEmail || 'Anonymous'}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(transaction.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Badge variant="secondary">₹{transaction.totalAmount.toFixed(2)}</Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No recent transactions</p>
-            )}
-          </CardContent>
-        </Card>
+        {/* Recent Transactions removed per request */}
       </div>
     </AdminRouteGuard>
   )
