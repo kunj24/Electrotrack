@@ -474,9 +474,7 @@ export default function AdminAnalytics() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-muted-foreground">No recent transactions</p>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>
