@@ -15,6 +15,9 @@ import { userAuth } from "@/lib/user-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { validateAddressWithAPI, standardizeAddress } from "@/lib/enhanced-address-validation"
+import { AddressValidationFeedback } from "@/components/address-feedback"
+import FlipkartAddressManager from "@/components/flipkart-address-manager"
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -29,11 +32,14 @@ export default function ProfilePage() {
     phone: '',
     address: '',
     city: '',
-    state: '',
+    state: 'Gujarat',
     pincode: '',
     type: 'Home',
     isDefault: false
   })
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({})
+  const [addressValidation, setAddressValidation] = useState<any>(null)
+  const [isValidatingAddress, setIsValidatingAddress] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -42,7 +48,7 @@ export default function ProfilePage() {
     try {
       const response = await fetch(`/api/user/profile?userId=${encodeURIComponent(userEmail)}`)
       const data = await response.json()
-      
+
       if (data.success) {
         setAddresses(data.user.shippingAddresses || [])
         return data.user
@@ -58,7 +64,7 @@ export default function ProfilePage() {
     try {
       const response = await fetch(`/api/user/orders?userId=${encodeURIComponent(userEmail)}`)
       const data = await response.json()
-      
+
       if (data.success) {
         setOrders(data.orders || [])
       }
@@ -77,7 +83,7 @@ export default function ProfilePage() {
       const user = userAuth.getCurrentUser()
       setCurrentUser(user)
       setEditedUser(user)
-      
+
       if (user && user.email) {
         // Fetch profile and orders from API
         const profileData = await fetchUserProfile(user.email)
@@ -86,10 +92,10 @@ export default function ProfilePage() {
           setCurrentUser(updatedUser)
           setEditedUser(updatedUser)
         }
-        
+
         await fetchUserOrders(user.email)
       }
-      
+
       setLoading(false)
     }
 
@@ -115,7 +121,7 @@ export default function ProfilePage() {
       })
 
       const data = await response.json()
-      
+
       if (data.success) {
         // Update localStorage as well
         const users = JSON.parse(localStorage.getItem("users") || "[]")
@@ -153,6 +159,27 @@ export default function ProfilePage() {
 
   const handleAddAddress = async () => {
     try {
+      setIsValidatingAddress(true)
+
+      // Validate address using our enhanced validation
+      const validation = await validateAddressWithAPI(newAddress)
+      setAddressValidation(validation)
+
+      if (!validation.isValid) {
+        setAddressErrors(validation.errors)
+        setIsValidatingAddress(false)
+
+        toast({
+          title: "Address validation failed",
+          description: "Please fix the errors and try again.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Use standardized address if available
+      const addressToSave = validation.standardized || newAddress
+
       const response = await fetch('/api/user/profile', {
         method: 'POST',
         headers: {
@@ -161,12 +188,15 @@ export default function ProfilePage() {
         body: JSON.stringify({
           userId: currentUser.email,
           action: 'add_address',
-          data: newAddress
+          data: {
+            ...addressToSave,
+            locationInfo: validation.locationInfo // Save location metadata
+          }
         })
       })
 
       const data = await response.json()
-      
+
       if (data.success) {
         setAddresses([...addresses, data.address])
         setNewAddress({
@@ -174,16 +204,20 @@ export default function ProfilePage() {
           phone: '',
           address: '',
           city: '',
-          state: '',
+          state: 'Gujarat',
           pincode: '',
           type: 'Home',
           isDefault: false
         })
+        setAddressErrors({})
+        setAddressValidation(null)
         setIsAddingAddress(false)
 
         toast({
-          title: "Address added",
-          description: "Your delivery address has been added successfully.",
+          title: "Address added successfully",
+          description: validation.standardized
+            ? "Address was standardized and saved with location details."
+            : "Your delivery address has been added successfully.",
         })
       } else {
         throw new Error(data.error)
@@ -194,6 +228,8 @@ export default function ProfilePage() {
         description: error.message || "Failed to add address. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsValidatingAddress(false)
     }
   }
 
@@ -212,7 +248,7 @@ export default function ProfilePage() {
       })
 
       const data = await response.json()
-      
+
       if (data.success) {
         setAddresses(addresses.filter(addr => addr.id !== addressId))
 
@@ -442,150 +478,12 @@ export default function ProfilePage() {
 
             {/* Addresses Tab */}
             <TabsContent value="addresses">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Delivery Addresses</CardTitle>
-                      <CardDescription>Manage your delivery addresses for faster checkout.</CardDescription>
-                    </div>
-                    <Button onClick={() => setIsAddingAddress(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Address
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {isAddingAddress && (
-                    <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-                      <h3 className="font-medium mb-4">Add New Address</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="fullName">Full Name</Label>
-                          <Input
-                            id="fullName"
-                            value={newAddress.fullName}
-                            onChange={(e) => setNewAddress({...newAddress, fullName: e.target.value})}
-                            placeholder="Enter full name"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="phone">Phone Number</Label>
-                          <Input
-                            id="phone"
-                            value={newAddress.phone}
-                            onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})}
-                            placeholder="Enter phone number"
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Label htmlFor="address">Address</Label>
-                          <Input
-                            id="address"
-                            value={newAddress.address}
-                            onChange={(e) => setNewAddress({...newAddress, address: e.target.value})}
-                            placeholder="Enter full address"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            value={newAddress.city}
-                            onChange={(e) => setNewAddress({...newAddress, city: e.target.value})}
-                            placeholder="Enter city"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            value={newAddress.state}
-                            onChange={(e) => setNewAddress({...newAddress, state: e.target.value})}
-                            placeholder="Enter state"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="pincode">Pincode</Label>
-                          <Input
-                            id="pincode"
-                            value={newAddress.pincode}
-                            onChange={(e) => setNewAddress({...newAddress, pincode: e.target.value})}
-                            placeholder="Enter pincode"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="type">Address Type</Label>
-                          <select
-                            id="type"
-                            className="w-full p-2 border rounded"
-                            value={newAddress.type}
-                            onChange={(e) => setNewAddress({...newAddress, type: e.target.value})}
-                          >
-                            <option value="Home">Home</option>
-                            <option value="Office">Office</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2 mt-4">
-                        <input
-                          type="checkbox"
-                          id="isDefault"
-                          checked={newAddress.isDefault}
-                          onChange={(e) => setNewAddress({...newAddress, isDefault: e.target.checked})}
-                        />
-                        <Label htmlFor="isDefault">Set as default address</Label>
-                      </div>
-                      <div className="flex space-x-2 mt-4">
-                        <Button onClick={handleAddAddress}>Save Address</Button>
-                        <Button variant="outline" onClick={() => setIsAddingAddress(false)}>Cancel</Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-4">
-                    {addresses.length > 0 ? (
-                      addresses.map((address) => (
-                        <div key={address.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Badge variant={address.isDefault ? "default" : "outline"}>
-                                  {address.type || 'Home'}
-                                </Badge>
-                                {address.isDefault && <Badge variant="secondary">Default</Badge>}
-                              </div>
-                              <p className="font-medium">{address.fullName}</p>
-                              <p className="text-sm text-gray-600">{address.address}</p>
-                              <p className="text-sm text-gray-600">
-                                {address.city}, {address.state} - {address.pincode}
-                              </p>
-                              <p className="text-sm text-gray-600">{address.phone}</p>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleDeleteAddress(address.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8">
-                        <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">No addresses found</p>
-                        <p className="text-sm text-gray-400">Add a delivery address for faster checkout</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <FlipkartAddressManager
+                userId={currentUser.email}
+                className="bg-white rounded-lg"
+              />
             </TabsContent>
+
 
             {/* Settings Tab */}
             <TabsContent value="settings">
