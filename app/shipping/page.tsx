@@ -17,6 +17,15 @@ import { Truck, CreditCard, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { userAuth } from "@/lib/user-auth"
 import { useAdminIntegration } from "@/hooks/use-admin-integration"
+import {
+  validateCompleteAddress,
+  validatePinCode,
+  validateAddress,
+  validateCity,
+  validatePhone,
+  validateFullName,
+  isAddressValid
+} from "@/lib/address-validation"
 
 interface CartData {
   items: Array<{
@@ -52,6 +61,7 @@ export default function ShippingPage() {
   const [isNewAddress, setIsNewAddress] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [pincodeInfo, setPincodeInfo] = useState<{district?: string, state?: string} | null>(null)
 
   const router = useRouter()
   const { toast } = useToast()
@@ -92,7 +102,7 @@ export default function ShippingPage() {
       try {
         const response = await fetch(`/api/user/profile?userId=${encodeURIComponent(user.email)}`)
         const data = await response.json()
-        
+
         if (data.success && data.user) {
           // Pre-fill user data
           setShippingData((prev) => ({
@@ -101,17 +111,17 @@ export default function ShippingPage() {
             email: data.user.email || "",
             phone: data.user.phone || "",
           }))
-          
+
           // Load saved addresses
           const addresses = data.user.shippingAddresses || []
           setSavedAddresses(addresses)
-          
+
           // If user has addresses, find default or use first one
           if (addresses.length > 0) {
             const defaultAddress = addresses.find((addr: any) => addr.isDefault) || addresses[0]
             setSelectedAddressId(defaultAddress.id)
             setIsNewAddress(false)
-            
+
             // Pre-fill with default address
             setShippingData((prev) => ({
               ...prev,
@@ -160,7 +170,7 @@ export default function ShippingPage() {
     } else {
       setIsNewAddress(false)
       setSelectedAddressId(addressId)
-      
+
       // Find and load selected address
       const selectedAddress = savedAddresses.find((addr: any) => addr.id === addressId)
       if (selectedAddress) {
@@ -178,14 +188,31 @@ export default function ShippingPage() {
   }
 
   const validateForm = () => {
+    const validationResults = validateCompleteAddress({
+      fullName: shippingData.fullName,
+      phone: shippingData.phone,
+      address: shippingData.address,
+      city: shippingData.city,
+      state: shippingData.state,
+      pincode: shippingData.pincode
+    })
+
+    // Convert validation results to error messages
     const newErrors: Record<string, string> = {}
 
-    if (!shippingData.fullName.trim()) newErrors.fullName = "Full name is required"
-    if (!shippingData.email.trim()) newErrors.email = "Email is required"
-    if (!shippingData.phone.trim()) newErrors.phone = "Phone number is required"
-    if (!shippingData.address.trim()) newErrors.address = "Address is required"
-    if (!shippingData.city.trim()) newErrors.city = "City is required"
-    if (!shippingData.pincode.trim()) newErrors.pincode = "Pincode is required"
+    Object.entries(validationResults).forEach(([field, result]) => {
+      if (!result.isValid && result.error) {
+        newErrors[field] = result.error
+      }
+    })
+
+    // Email validation (kept separate as it's not part of address validation)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!shippingData.email.trim()) {
+      newErrors.email = "Email is required"
+    } else if (!emailRegex.test(shippingData.email)) {
+      newErrors.email = "Please enter a valid email address"
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -220,7 +247,7 @@ export default function ShippingPage() {
 
       // Add each cart item as a separate sale in admin system with actual order date
       const orderDate = new Date().toISOString().split("T")[0] // Current date for the order
-      
+
       cartData.items.forEach((item) => {
         for (let i = 0; i < item.quantity; i++) {
           addOnlineSale({
@@ -284,12 +311,12 @@ export default function ShippingPage() {
           })
 
           const result = await response.json()
-          
+
           if (result.success) {
             // Update localStorage with the generated orderId
             orderData.orderId = result.orderId
             localStorage.setItem("radhika_current_order", JSON.stringify(orderData))
-            
+
             toast({
               title: "Order placed successfully!",
               description: `Your order ${result.orderId} will be delivered within 3-5 business days.`,
@@ -308,7 +335,7 @@ export default function ShippingPage() {
             description: "Order was processed but may not appear in your order history. Please contact support.",
             variant: "destructive",
           })
-          
+
           // Still redirect to success since admin system was updated
           localStorage.removeItem("radhika_checkout_cart")
           router.push("/order-success")
@@ -328,8 +355,41 @@ export default function ShippingPage() {
 
   const handleInputChange = (field: string, value: string) => {
     setShippingData((prev) => ({ ...prev, [field]: value }))
+
+    // Clear existing error for this field
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }))
+    }
+
+    // Real-time validation for specific fields
+    if (field === 'pincode' && value.trim()) {
+      const pincodeValidation = validatePinCode(value)
+      if (pincodeValidation.isValid && pincodeValidation.locationInfo) {
+        setPincodeInfo({
+          district: pincodeValidation.locationInfo.district,
+          state: pincodeValidation.locationInfo.state
+        })
+
+        // Auto-update city if it's empty and we have district info
+        if (!shippingData.city.trim() && pincodeValidation.locationInfo.district !== "Gujarat") {
+          setShippingData((prev) => ({
+            ...prev,
+            [field]: value,
+            city: pincodeValidation.locationInfo!.district
+          }))
+        }
+      } else {
+        setPincodeInfo(null)
+      }
+    }
+
+    // Real-time validation for phone numbers (show format hint)
+    if (field === 'phone' && value.trim()) {
+      const phoneValidation = validatePhone(value)
+      if (!phoneValidation.isValid) {
+        // Show format hint instead of error during typing
+        console.log('Phone format hint:', phoneValidation.error)
+      }
     }
   }
 
@@ -380,11 +440,22 @@ export default function ShippingPage() {
                       <Label htmlFor="fullName">Full Name</Label>
                       <Input
                         id="fullName"
+                        placeholder="Enter your first and last name"
                         value={shippingData.fullName}
-                        onChange={(e) => handleInputChange("fullName", e.target.value)}
+                        onChange={(e) => {
+                          // Only allow letters, spaces, dots, and apostrophes
+                          const value = e.target.value.replace(/[^a-zA-Z\s\.']/g, '')
+                          handleInputChange("fullName", value)
+                        }}
                         className={errors.fullName ? "border-red-500" : ""}
+                        maxLength={100}
                       />
-                      {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
+                      {errors.fullName && (
+                        <p className="text-red-500 text-sm mt-1 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {errors.fullName}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -404,11 +475,27 @@ export default function ShippingPage() {
                     <Label htmlFor="phone">Phone Number</Label>
                     <Input
                       id="phone"
+                      placeholder="Enter 10-digit mobile number"
                       value={shippingData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      onChange={(e) => {
+                        // Only allow digits and limit to reasonable length
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                        handleInputChange("phone", value)
+                      }}
                       className={errors.phone ? "border-red-500" : ""}
+                      maxLength={10}
                     />
-                    {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                    {errors.phone && (
+                      <p className="text-red-500 text-sm mt-1 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {errors.phone}
+                      </p>
+                    )}
+                    {!errors.phone && shippingData.phone.length > 0 && shippingData.phone.length < 10 && (
+                      <p className="text-amber-600 text-sm mt-1">
+                        📱 Enter {10 - shippingData.phone.length} more digits
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -423,8 +510,8 @@ export default function ShippingPage() {
                   {savedAddresses.length > 0 && (
                     <div>
                       <Label>Select Address</Label>
-                      <RadioGroup 
-                        value={isNewAddress ? 'new' : selectedAddressId} 
+                      <RadioGroup
+                        value={isNewAddress ? 'new' : selectedAddressId}
                         onValueChange={handleAddressSelection}
                         className="mt-2"
                       >
@@ -468,11 +555,21 @@ export default function ShippingPage() {
                         <Label htmlFor="address">Street Address</Label>
                         <Textarea
                           id="address"
+                          placeholder="Enter complete address with house/flat number, street name, landmark..."
                           value={shippingData.address}
                           onChange={(e) => handleInputChange("address", e.target.value)}
-                          className={errors.address ? "border-red-500" : ""}
+                          className={`${errors.address ? "border-red-500" : ""} min-h-[80px]`}
+                          maxLength={200}
                         />
-                        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+                        {errors.address && (
+                          <p className="text-red-500 text-sm mt-1 flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            {errors.address}
+                          </p>
+                        )}
+                        <p className="text-gray-500 text-xs mt-1">
+                          {200 - shippingData.address.length} characters remaining
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -480,11 +577,22 @@ export default function ShippingPage() {
                           <Label htmlFor="city">City</Label>
                           <Input
                             id="city"
+                            placeholder="Enter city name"
                             value={shippingData.city}
-                            onChange={(e) => handleInputChange("city", e.target.value)}
+                            onChange={(e) => {
+                              // Only allow letters, spaces, hyphens, and apostrophes
+                              const value = e.target.value.replace(/[^a-zA-Z\s\-'\.]/g, '')
+                              handleInputChange("city", value)
+                            }}
                             className={errors.city ? "border-red-500" : ""}
+                            maxLength={50}
                           />
-                          {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+                          {errors.city && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {errors.city}
+                            </p>
+                          )}
                         </div>
 
                         <div>
@@ -501,11 +609,32 @@ export default function ShippingPage() {
                           <Label htmlFor="pincode">Pincode</Label>
                           <Input
                             id="pincode"
+                            placeholder="Enter 6-digit PIN code"
                             value={shippingData.pincode}
-                            onChange={(e) => handleInputChange("pincode", e.target.value)}
-                            className={errors.pincode ? "border-red-500" : ""}
+                            onChange={(e) => {
+                              // Only allow digits and limit to 6 characters
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 6)
+                              handleInputChange("pincode", value)
+                            }}
+                            className={`${errors.pincode ? "border-red-500" : ""} ${
+                              pincodeInfo ? "border-green-500" : ""
+                            }`}
+                            maxLength={6}
                           />
-                          {errors.pincode && <p className="text-red-500 text-sm mt-1">{errors.pincode}</p>}
+                          {errors.pincode && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {errors.pincode}
+                            </p>
+                          )}
+                          {pincodeInfo && !errors.pincode && (
+                            <p className="text-green-600 text-sm mt-1 flex items-center">
+                              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              📍 {pincodeInfo.district}, {pincodeInfo.state} - Delivery Available
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -590,6 +719,23 @@ export default function ShippingPage() {
                   </RadioGroup>
                 </CardContent>
               </Card>
+
+              {/* Address Validation Summary */}
+              {Object.keys(errors).length > 0 && (
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    <strong>Please fix the following issues:</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      {Object.entries(errors).map(([field, error]) => (
+                        <li key={field} className="text-sm">
+                          <strong className="capitalize">{field}:</strong> {error}
+                        </li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
                 {isLoading ? (
