@@ -26,6 +26,12 @@ import {
   validateFullName,
   isAddressValid
 } from "@/lib/address-validation"
+import {
+  validatePinCodeWithAPI,
+  validateAddressWithAPI,
+  standardizeAddress,
+  getDeliveryEstimate
+} from "@/lib/enhanced-address-validation"
 
 interface CartData {
   items: Array<{
@@ -61,7 +67,8 @@ export default function ShippingPage() {
   const [isNewAddress, setIsNewAddress] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [pincodeInfo, setPincodeInfo] = useState<{district?: string, state?: string} | null>(null)
+  const [pincodeInfo, setPincodeInfo] = useState<{district?: string, state?: string, area?: string, suggestions?: any[]} | null>(null)
+  const [pincodeLoading, setPincodeLoading] = useState(false)
 
   const router = useRouter()
   const { toast } = useToast()
@@ -187,8 +194,9 @@ export default function ShippingPage() {
     }
   }
 
-  const validateForm = () => {
-    const validationResults = validateCompleteAddress({
+  const validateForm = async () => {
+    // Use enhanced validation with API
+    const validationResult = await validateAddressWithAPI({
       fullName: shippingData.fullName,
       phone: shippingData.phone,
       address: shippingData.address,
@@ -197,14 +205,7 @@ export default function ShippingPage() {
       pincode: shippingData.pincode
     })
 
-    // Convert validation results to error messages
-    const newErrors: Record<string, string> = {}
-
-    Object.entries(validationResults).forEach(([field, result]) => {
-      if (!result.isValid && result.error) {
-        newErrors[field] = result.error
-      }
-    })
+    const newErrors = validationResult.errors
 
     // Email validation (kept separate as it's not part of address validation)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -215,13 +216,27 @@ export default function ShippingPage() {
     }
 
     setErrors(newErrors)
+
+    // If validation passed and we have standardized data, offer to use it
+    if (validationResult.isValid && validationResult.standardized) {
+      const standardized = validationResult.standardized
+      if (standardized.city !== shippingData.city) {
+        // Auto-apply standardized city if different
+        setShippingData(prev => ({
+          ...prev,
+          city: standardized.city,
+          address: standardized.address
+        }))
+      }
+    }
+
     return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm() || !cartData) return
+    if (!(await validateForm()) || !cartData) return
 
     setIsLoading(true)
 
@@ -362,28 +377,46 @@ export default function ShippingPage() {
     }
 
     // Real-time validation for specific fields
-    if (field === 'pincode' && value.trim()) {
-      const pincodeValidation = validatePinCode(value)
-      if (pincodeValidation.isValid && pincodeValidation.locationInfo) {
-        setPincodeInfo({
-          district: pincodeValidation.locationInfo.district,
-          state: pincodeValidation.locationInfo.state
-        })
+    if (field === 'pincode' && value.trim() && value.length === 6) {
+      setPincodeLoading(true)
 
-        // Auto-update city if it's empty and we have district info
-        if (!shippingData.city.trim() && pincodeValidation.locationInfo.district !== "Gujarat") {
-          setShippingData((prev) => ({
-            ...prev,
-            [field]: value,
-            city: pincodeValidation.locationInfo!.district
-          }))
+      // Use enhanced API validation
+      validatePinCodeWithAPI(value).then((pincodeValidation) => {
+        setPincodeLoading(false)
+
+        if (pincodeValidation.isValid && pincodeValidation.locationInfo) {
+          const locationInfo = pincodeValidation.locationInfo
+          setPincodeInfo({
+            district: locationInfo.district,
+            state: locationInfo.state,
+            area: locationInfo.area,
+            suggestions: pincodeValidation.suggestions
+          })
+
+          // Auto-update city if it's empty and we have location info
+          if (!shippingData.city.trim()) {
+            const suggestedCity = locationInfo.city || locationInfo.district
+            setShippingData((prev) => ({
+              ...prev,
+              [field]: value,
+              city: suggestedCity
+            }))
+          }
+        } else {
+          setPincodeInfo(null)
+          // Show error for invalid PIN code
+          if (pincodeValidation.error) {
+            setErrors((prev) => ({ ...prev, pincode: pincodeValidation.error! }))
+          }
         }
-      } else {
+      }).catch(() => {
+        setPincodeLoading(false)
         setPincodeInfo(null)
-      }
-    }
-
-    // Real-time validation for phone numbers (show format hint)
+      })
+    } else if (field === 'pincode') {
+      setPincodeInfo(null)
+      setPincodeLoading(false)
+    }    // Real-time validation for phone numbers (show format hint)
     if (field === 'phone' && value.trim()) {
       const phoneValidation = validatePhone(value)
       if (!phoneValidation.isValid) {
@@ -573,7 +606,7 @@ export default function ShippingPage() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
+                        <div className="relative">
                           <Label htmlFor="city">City</Label>
                           <Input
                             id="city"
@@ -587,6 +620,36 @@ export default function ShippingPage() {
                             className={errors.city ? "border-red-500" : ""}
                             maxLength={50}
                           />
+
+                          {/* Address Suggestions */}
+                          {pincodeInfo?.suggestions && pincodeInfo.suggestions.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                              <div className="p-2">
+                                <p className="text-xs font-medium text-gray-600 mb-2">Suggested locations for PIN {shippingData.pincode}:</p>
+                                {pincodeInfo.suggestions.map((suggestion, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => {
+                                      setShippingData(prev => ({
+                                        ...prev,
+                                        city: suggestion.name
+                                      }))
+                                      setPincodeInfo(prev => prev ? {...prev, suggestions: []} : null)
+                                    }}
+                                    className="w-full text-left p-2 hover:bg-blue-50 rounded text-sm flex items-center justify-between"
+                                  >
+                                    <div>
+                                      <span className="font-medium">{suggestion.name}</span>
+                                      <span className="text-gray-500 ml-2">({suggestion.type})</span>
+                                    </div>
+                                    <span className="text-xs text-blue-600">Use</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {errors.city && (
                             <p className="text-red-500 text-sm mt-1 flex items-center">
                               <AlertCircle className="w-4 h-4 mr-1" />
@@ -607,20 +670,27 @@ export default function ShippingPage() {
 
                         <div>
                           <Label htmlFor="pincode">Pincode</Label>
-                          <Input
-                            id="pincode"
-                            placeholder="Enter 6-digit PIN code"
-                            value={shippingData.pincode}
-                            onChange={(e) => {
-                              // Only allow digits and limit to 6 characters
-                              const value = e.target.value.replace(/\D/g, '').slice(0, 6)
-                              handleInputChange("pincode", value)
-                            }}
-                            className={`${errors.pincode ? "border-red-500" : ""} ${
-                              pincodeInfo ? "border-green-500" : ""
-                            }`}
-                            maxLength={6}
-                          />
+                          <div className="relative">
+                            <Input
+                              id="pincode"
+                              placeholder="Enter 6-digit PIN code"
+                              value={shippingData.pincode}
+                              onChange={(e) => {
+                                // Only allow digits and limit to 6 characters
+                                const value = e.target.value.replace(/\D/g, '').slice(0, 6)
+                                handleInputChange("pincode", value)
+                              }}
+                              className={`${errors.pincode ? "border-red-500" : ""} ${
+                                pincodeInfo ? "border-green-500" : ""
+                              } ${pincodeLoading ? "pr-8" : ""}`}
+                              maxLength={6}
+                            />
+                            {pincodeLoading && (
+                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                              </div>
+                            )}
+                          </div>
                           {errors.pincode && (
                             <p className="text-red-500 text-sm mt-1 flex items-center">
                               <AlertCircle className="w-4 h-4 mr-1" />
@@ -628,12 +698,18 @@ export default function ShippingPage() {
                             </p>
                           )}
                           {pincodeInfo && !errors.pincode && (
-                            <p className="text-green-600 text-sm mt-1 flex items-center">
-                              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                              📍 {pincodeInfo.district}, {pincodeInfo.state} - Delivery Available
-                            </p>
+                            <div className="mt-1 space-y-1">
+                              <p className="text-green-600 text-sm flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                📍 {pincodeInfo.district}, {pincodeInfo.state}
+                                {pincodeInfo.area && ` • ${pincodeInfo.area}`}
+                              </p>
+                              <p className="text-blue-600 text-xs">
+                                ✅ Delivery Available • Estimated: 2-5 business days
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>
