@@ -30,13 +30,13 @@ export function Header() {
 
   const fetchCartCount = async (userEmail: string) => {
     if (isLoadingCart) return // Prevent multiple simultaneous requests
-    
+
     console.log('fetchCartCount called for user:', userEmail)
     setIsLoadingCart(true)
     try {
       const cartItems = await CartService.getCart(userEmail)
       console.log('Retrieved cart items:', cartItems)
-      
+
       if (cartItems && Array.isArray(cartItems)) {
         const totalItems = cartItems.reduce((total: number, item: any) => total + (item.quantity || 0), 0)
         console.log('Total cart items:', totalItems)
@@ -60,7 +60,7 @@ export function Header() {
       const user = userAuth.getCurrentUser()
       setIsLoggedIn(loggedIn)
       setCurrentUser(user)
-      
+
       // Fetch cart count if user is logged in
       if (loggedIn && user) {
         fetchCartCount(user.email)
@@ -80,7 +80,7 @@ export function Header() {
       const user = userAuth.getCurrentUser()
       setIsLoggedIn(loggedIn)
       setCurrentUser(user)
-      
+
       if (loggedIn && user) {
         fetchCartCount(user.email)
       } else {
