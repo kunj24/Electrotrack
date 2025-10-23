@@ -9,36 +9,20 @@ export async function GET(request: NextRequest) {
     const orders = await db.collection('orders')
       .find({})
       .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray()
-
-    // Get expenses for transaction data
-    const expenses = await db.collection('expenses')
-      .find({})
-      .sort({ date: -1 })
-      .limit(20)
       .toArray()
 
     return NextResponse.json({
+      success: true,
       orders: orders.map(order => ({
-        id: order._id.toString(),
-        userId: order.userId,
-        items: order.items || [],
+        _id: order._id.toString(),
+        orderId: order.orderId,
+        userEmail: order.userEmail,
+        status: order.status || 'Processing',
         total: order.total || 0,
-        status: order.status || 'completed',
+        items: order.items || [],
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
-      })),
-      expenses: expenses.map(expense => ({
-        id: expense._id.toString(),
-        description: expense.description,
-        amount: expense.amount,
-        category: expense.category,
-        type: expense.type || 'expense',
-        date: expense.date,
-        notes: expense.notes,
-        createdAt: expense.createdAt,
-        updatedAt: expense.updatedAt,
+        tracking: order.tracking // Include tracking info if exists
       }))
     })
 
