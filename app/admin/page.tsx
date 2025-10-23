@@ -259,6 +259,12 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Button asChild className="w-full justify-start bg-transparent" variant="outline">
+                    <Link href="/admin/orders">
+                      <Package className="h-4 w-4 mr-2" />
+                      Orders Management
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full justify-start bg-transparent" variant="outline">
                     <Link href="/admin/inventory">
                       <Package className="h-4 w-4 mr-2" />
                       Inventory Management
