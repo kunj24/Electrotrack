@@ -459,6 +459,15 @@ export default function ProfilePage() {
                             </p>
                             <p className="font-medium">₹{order.total.toLocaleString()}</p>
                           </div>
+                          <div className="flex justify-end mt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/orders/${order._id}`)}
+                            >
+                              Track Order
+                            </Button>
+                          </div>
                         </div>
                       ))
                     ) : (
