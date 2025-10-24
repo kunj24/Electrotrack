@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     let query: any = {}
 
     if (orderId) {
+      console.log('Tracking API - Searching for orderId:', orderId)
       // Try multiple search strategies:
       // 1. Search by orderId field
       // 2. Search by MongoDB _id if it looks like ObjectId
@@ -34,13 +35,29 @@ export async function GET(request: NextRequest) {
 
       query = { $or: searchQueries }
     } else if (trackingNumber) {
+      console.log('Tracking API - Searching for trackingNumber:', trackingNumber)
       query = { 'tracking.courier.trackingNumber': trackingNumber }
     }
 
+    console.log('Tracking API - Query:', JSON.stringify(query))
     const order = (await orders.findOne(query)) as OrderDocument | null
     if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      console.log('Tracking API - Order not found')
+      // Also log available order IDs for debugging
+      const availableOrders = await orders.find({}, { projection: { orderId: 1, _id: 1 } }).limit(10).toArray()
+      console.log('Tracking API - Available orders:', availableOrders.map(o => ({ orderId: o.orderId, _id: o._id.toString() })))
+
+      return NextResponse.json({
+        error: 'Order not found',
+        debugInfo: {
+          searchedOrderId: orderId,
+          searchedTrackingNumber: trackingNumber,
+          availableOrderIds: availableOrders.map(o => o.orderId)
+        }
+      }, { status: 404 })
     }
+
+    console.log('Tracking API - Found order:', order.orderId)
 
     const tracking = normalizeTracking(order)
 

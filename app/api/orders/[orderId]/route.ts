@@ -9,6 +9,8 @@ export async function GET(
   try {
     const { orderId } = await params
 
+    console.log('Order API - Received orderId:', orderId)
+
     if (!orderId) {
       return NextResponse.json({
         success: false,
@@ -20,18 +22,31 @@ export async function GET(
     const orders = db.collection('orders')
 
     // Try to find by orderId first, then by MongoDB _id
+    console.log('Order API - Searching for orderId:', orderId)
     let order = await orders.findOne({ orderId })
 
     if (!order && ObjectId.isValid(orderId)) {
+      console.log('Order API - Trying ObjectId search for:', orderId)
       order = await orders.findOne({ _id: new ObjectId(orderId) })
     }
 
     if (!order) {
+      console.log('Order API - Order not found for:', orderId)
+      // Also log available order IDs for debugging
+      const availableOrders = await orders.find({}, { projection: { orderId: 1, _id: 1 } }).limit(10).toArray()
+      console.log('Order API - Available orders:', availableOrders.map(o => ({ orderId: o.orderId, _id: o._id.toString() })))
+
       return NextResponse.json({
         success: false,
-        error: 'Order not found'
+        error: 'Order not found',
+        debugInfo: {
+          searchedOrderId: orderId,
+          availableOrderIds: availableOrders.map(o => o.orderId)
+        }
       }, { status: 404 })
     }
+
+    console.log('Order API - Found order:', order.orderId)
 
     // Return complete order details
     const orderDetails = {

@@ -62,6 +62,7 @@ export default function AdminOrderTrackingPage() {
     setLoading(true)
     setError(null)
     try {
+      console.log('Admin - Fetching tracking for orderId:', orderId)
       const res = await fetch(`/api/orders/tracking?orderId=${encodeURIComponent(orderId)}`)
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load tracking')
@@ -79,6 +80,7 @@ export default function AdminOrderTrackingPage() {
         setOrderData(orderJson.order)
       }
     } catch (e: any) {
+      console.error('Admin - Fetch tracking error:', e)
       setError(e.message)
     } finally {
       setLoading(false)
@@ -99,6 +101,7 @@ export default function AdminOrderTrackingPage() {
   const saveStatus = async () => {
     setSaving(true)
     try {
+      // Use the orderId from URL parameter (which could be MongoDB _id or actual orderId)
       const res = await fetch('/api/admin/orders/tracking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

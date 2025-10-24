@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
 import { addTrackingEvent, setOrderStatus, type OrderDocument, type OrderStatus } from '@/lib/models/order'
 
 // Admin: POST /api/admin/orders/tracking
@@ -12,6 +13,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { orderId, update } = body || {}
 
+    console.log('Admin tracking API - orderId:', orderId, 'update:', update)
+
     if (!orderId || !update) {
       return NextResponse.json({ error: 'orderId and update are required' }, { status: 400 })
     }
@@ -19,8 +22,15 @@ export async function POST(request: NextRequest) {
     const db = await getDb()
     const orders = db.collection('orders')
 
-    const order = (await orders.findOne({ orderId })) as OrderDocument | null
+    // Try to find by orderId first, then by MongoDB _id
+    let order = await orders.findOne({ orderId }) as OrderDocument | null
+
+    if (!order && ObjectId.isValid(orderId)) {
+      order = await orders.findOne({ _id: new ObjectId(orderId) }) as OrderDocument | null
+    }
+
     if (!order) {
+      console.log('Admin tracking - Order not found for:', orderId)
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
@@ -80,8 +90,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unsupported update type' }, { status: 400 })
     }
 
+    // Use the actual _id for the update operation, not the URL parameter
     const result = await orders.updateOne(
-      { orderId },
+      { _id: order._id },
       {
         $set: {
           tracking: updatedTracking,
