@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
-    const { orderId } = params
+    const { orderId } = await params
 
     if (!orderId) {
       return NextResponse.json({
@@ -17,10 +18,14 @@ export async function GET(
 
     const db = await getDb()
     const orders = db.collection('orders')
-    
-    // Find the order by orderId
-    const order = await orders.findOne({ orderId })
-    
+
+    // Try to find by orderId first, then by MongoDB _id
+    let order = await orders.findOne({ orderId })
+
+    if (!order && ObjectId.isValid(orderId)) {
+      order = await orders.findOne({ _id: new ObjectId(orderId) })
+    }
+
     if (!order) {
       return NextResponse.json({
         success: false,
@@ -28,21 +33,23 @@ export async function GET(
       }, { status: 404 })
     }
 
-    // Return order details (exclude sensitive information)
+    // Return complete order details
     const orderDetails = {
+      _id: order._id.toString(),
       orderId: order.orderId,
-      items: order.items,
+      userEmail: order.userEmail,
+      items: order.items || [],
+      shippingAddress: order.shippingAddress,
+      paymentMethod: order.paymentMethod || 'COD',
+      total: order.total || 0,
       subtotal: order.subtotal,
       tax: order.tax,
       shipping: order.shipping,
-      total: order.total,
-      currency: order.currency,
-      paymentMethod: order.paymentMethod,
-      paymentStatus: order.paymentStatus,
-      orderStatus: order.orderStatus,
+      status: order.status,
       createdAt: order.createdAt,
-      estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      shippingAddress: order.shippingAddress
+      updatedAt: order.updatedAt,
+      estimatedDelivery: order.estimatedDelivery,
+      tracking: order.tracking
     }
 
     return NextResponse.json({
