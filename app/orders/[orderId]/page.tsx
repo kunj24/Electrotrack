@@ -24,18 +24,18 @@ export default function OrderTrackingPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/orders/tracking?orderId=${encodeURIComponent(orderId)}`)
+      console.log('Fetching tracking for orderId:', orderId)
+      const url = `/api/orders/tracking?orderId=${encodeURIComponent(orderId)}`
+      console.log('API URL:', url)
+      const res = await fetch(url)
+      console.log('Response status:', res.status)
       const json = await res.json()
+      console.log('Response data:', json)
       if (!res.ok) throw new Error(json.error || 'Failed to load tracking')
       setTrackingData(json)
-
-      // Also fetch full order details
-      const orderRes = await fetch(`/api/orders/${encodeURIComponent(orderId)}`)
-      if (orderRes.ok) {
-        const orderJson = await orderRes.json()
-        setOrderData(orderJson.order)
-      }
+      setOrderData(json.order) // Order details are now included in tracking API response
     } catch (e: any) {
+      console.error('Tracking fetch error:', e)
       setError(e.message)
     } finally {
       setLoading(false)
