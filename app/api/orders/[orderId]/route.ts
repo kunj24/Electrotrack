@@ -35,7 +35,7 @@ export async function GET(
       // Also log available order IDs for debugging
       const availableOrders = await orders.find({}, { projection: { orderId: 1, _id: 1 } }).limit(10).toArray()
       console.log('Order API - Available orders:', availableOrders.map(o => ({ orderId: o.orderId, _id: o._id.toString() })))
-      
+
       return NextResponse.json({
         success: false,
         error: 'Order not found',
