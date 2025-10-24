@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
       // Also log available order IDs for debugging
       const availableOrders = await orders.find({}, { projection: { orderId: 1, _id: 1 } }).limit(10).toArray()
       console.log('Tracking API - Available orders:', availableOrders.map(o => ({ orderId: o.orderId, _id: o._id.toString() })))
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         error: 'Order not found',
         debugInfo: {
           searchedOrderId: orderId,
