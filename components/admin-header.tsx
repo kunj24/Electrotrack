@@ -70,6 +70,12 @@ export function AdminHeader() {
               Analytics
             </Link>
             <Link
+              href="/admin/orders"
+              className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              Orders
+            </Link>
+            <Link
               href="/admin/transactions"
               className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
             >

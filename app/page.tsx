@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Fan, Tv, AirVent, Waves, Settings } from "lucide-react"
 import { Footer } from "@/components/footer"
+import ElectrotrackChatbot from "@/components/chatbot"
 
 export default function HomePage() {
   const categories = [
@@ -101,6 +102,9 @@ export default function HomePage() {
         </div>
       </section>
       <Footer />
+
+      {/* Chatbot Component */}
+      <ElectrotrackChatbot />
     </div>
   )
 }
