@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Package, Search, Eye, Truck, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import ElectrotrackChatbot from "@/components/chatbot"
 
 interface Order {
   _id: string
@@ -54,7 +55,7 @@ export default function AdminOrdersPage() {
     fetchOrders()
   }, [])
 
-  
+
   const fetchOrders = async () => {
     try {
       setLoading(true)
@@ -248,6 +249,9 @@ export default function AdminOrdersPage() {
           </Card>
         </main>
       </div>
+
+      {/* Chatbot Component */}
+      <ElectrotrackChatbot />
     </AdminRouteGuard>
   )
 }
