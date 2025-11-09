@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -41,6 +41,8 @@ export default function ProfilePage() {
   const [addressValidation, setAddressValidation] = useState<any>(null)
   const [isValidatingAddress, setIsValidatingAddress] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const defaultTabFromQuery = searchParams?.get('tab') || 'personal'
   const { toast } = useToast()
 
   // Fetch user profile data from API
@@ -337,7 +339,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* Profile Tabs */}
-          <Tabs defaultValue="personal" className="space-y-6">
+          <Tabs defaultValue={defaultTabFromQuery} className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="orders">Order History</TabsTrigger>
