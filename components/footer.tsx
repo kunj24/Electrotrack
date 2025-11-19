@@ -27,11 +27,7 @@ export function Footer() {
                   Fans & Coolers
                 </Link>
               </li>
-              <li>
-                <Link href="/dashboard" className="text-blue-200 hover:text-white">
-                  TVs & Electronics
-                </Link>
-              </li>
+              {/* TVs removed as per update - kept other product links */}
               <li>
                 <Link href="/dashboard" className="text-blue-200 hover:text-white">
                   Air Conditioners

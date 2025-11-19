@@ -43,6 +43,32 @@ export default function DashboardPage() {
   const { toast } = useToast()
   const router = useRouter()
 
+  // Helper function to get the correct image URL for a product
+  const getProductImageUrl = (product: Product) => {
+    // If product has images array, use the first one
+    if (product.images && product.images.length > 0) {
+      const imageUrl = product.images[0]
+      // Check if it's already a full URL or relative path starting with /
+      if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+        return imageUrl
+      }
+      // If it's just a filename, assume it's in /uploads/products/
+      return `/uploads/products/${imageUrl}`
+    }
+
+    // Fallback to legacy image field
+    if (product.image) {
+      const imageUrl = product.image
+      if (imageUrl.startsWith('http') || imageUrl.startsWith('/')) {
+        return imageUrl
+      }
+      return `/uploads/products/${imageUrl}`
+    }
+
+    // Default placeholder
+    return "/placeholder.svg"
+  }
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -86,18 +112,27 @@ export default function DashboardPage() {
   const categories = [
     { value: "all", label: "All Products" },
     { value: "fans", label: "Fans" },
-    { value: "tvs", label: "TVs" },
     { value: "air-conditioners", label: "Air Conditioners" },
     { value: "coolers", label: "Coolers" },
     { value: "accessories", label: "Accessories" },
   ]
 
   const filteredProducts = products
-    .filter(
-      (product) =>
+    .filter((product) => {
+      // Exclude specific products from the customer dashboard
+      const excludedNames = new Set([
+        "crompton highflo 1200mm ceiling fan",
+        "voltas 1 ton 3 star split ac",
+      ])
+
+      const name = (product.name || "").toLowerCase().trim()
+      if (excludedNames.has(name)) return false
+
+      return (
         (selectedCategory === "all" || product.category === selectedCategory) &&
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    })
     .sort((a, b) => {
       switch (sortBy) {
         case "price-low":
@@ -163,7 +198,7 @@ export default function DashboardPage() {
           name: product.name,
           price: product.price,
           quantity: 1,
-          image: product.images?.[0] || "/placeholder.svg",
+          image: getProductImageUrl(product),
           category: product.category
         }
         updatedCart = [...currentCart, newItem]
@@ -256,15 +291,24 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-            <Card key={product.id} className={`hover:shadow-lg transition-shadow ${!product.inStock ? 'opacity-75 border-red-200' : ''}`}>
+            <Card key={product.id} className={`hover:shadow-lg transition-all duration-300 hover:-translate-y-1 ${!product.inStock ? 'opacity-75 border-red-200' : ''} flex flex-col h-full`}>
               <CardHeader className="p-0">
-                <div className="relative">
+                <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 rounded-t-lg">
                   <img
-                    src={product.image || "/placeholder.svg"}
+                    src={getProductImageUrl(product)}
                     alt={product.name}
-                    className={`w-full h-48 object-cover rounded-t-lg ${!product.inStock ? 'grayscale' : ''}`}
+                    className={`w-full h-full object-contain p-2 transition-transform hover:scale-105 ${!product.inStock ? 'grayscale' : ''}`}
+                    style={{
+                      objectFit: 'contain',
+                      mixBlendMode: 'multiply'
+                    }}
+                    onError={(e) => {
+                      // Fallback to placeholder if image fails to load
+                      const target = e.target as HTMLImageElement
+                      target.src = "/placeholder.svg"
+                    }}
                   />
                   {product.originalPrice && product.originalPrice > product.price && (
                     <Badge className="absolute top-2 left-2 bg-red-500">
@@ -279,9 +323,9 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
 
-              <CardContent className="p-4">
-                <CardTitle className="text-lg mb-2">{product.name}</CardTitle>
-                <CardDescription className="mb-3">{product.description}</CardDescription>
+              <CardContent className="p-4 flex flex-col flex-1">
+                <CardTitle className="text-lg mb-2 min-h-[3.5rem] overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{product.name}</CardTitle>
+                <CardDescription className="mb-3 text-sm text-gray-600 flex-1 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{product.description}</CardDescription>
 
                 {!product.inStock && (
                   <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
