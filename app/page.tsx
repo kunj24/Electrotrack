@@ -2,14 +2,13 @@ import { Header } from "@/components/header"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Fan, Tv, AirVent, Waves, Settings } from "lucide-react"
+import { Fan, AirVent, Waves, Settings } from "lucide-react"
 import { Footer } from "@/components/footer"
 import ElectrotrackChatbot from "@/components/chatbot"
 
 export default function HomePage() {
   const categories = [
     { name: "Fans", icon: Fan },
-    { name: "TVs", icon: Tv },
     { name: "Air Conditioners", icon: AirVent },
     { name: "Coolers", icon: Waves },
     { name: "Accessories", icon: Settings },
