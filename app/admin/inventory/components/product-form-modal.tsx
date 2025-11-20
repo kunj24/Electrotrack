@@ -91,23 +91,23 @@ export function ProductFormModal({
       height: 0
     },
     tags: [] as string[],
-    seoTitle: '',
-    seoDescription: ''
   })
 
   // Form section state
-  const [activeSection, setActiveSection] = useState<'basic' | 'inventory' | 'seo' | 'media'>('basic')
+  const [activeSection, setActiveSection] = useState<'basic' | 'inventory' | 'media'>('basic')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newImageUrl, setNewImageUrl] = useState('')
   const [newFeature, setNewFeature] = useState('')
   const [newTag, setNewTag] = useState('')
   const [newSpecKey, setNewSpecKey] = useState('')
   const [newSpecValue, setNewSpecValue] = useState('')
+  const [uploadingFiles, setUploadingFiles] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   // Load product data when editing
   useEffect(() => {
     if (product && open) {
-      setFormData({
+        setFormData({
         name: product.name || '',
         description: product.description || '',
         price: product.price || 0,
@@ -125,9 +125,7 @@ export function ProductFormModal({
         isFeatured: product.isFeatured || false,
         weight: product.weight || 0,
         dimensions: product.dimensions || { length: 0, width: 0, height: 0 },
-        tags: product.tags || [],
-        seoTitle: product.seoTitle || '',
-        seoDescription: product.seoDescription || ''
+        tags: product.tags || []
       })
     } else if (!product && open) {
       // Reset form for new product
@@ -149,9 +147,7 @@ export function ProductFormModal({
         isFeatured: false,
         weight: 0,
         dimensions: { length: 0, width: 0, height: 0 },
-        tags: [],
-        seoTitle: '',
-        seoDescription: ''
+        tags: []
       })
     }
     setErrors({})
@@ -166,7 +162,6 @@ export function ProductFormModal({
     if (!formData.description.trim()) newErrors.description = 'Description is required'
     if (formData.price <= 0) newErrors.price = 'Price must be greater than 0'
     if (formData.quantity < 0) newErrors.quantity = 'Quantity cannot be negative'
-    if (!formData.category) newErrors.category = 'Category is required'
     if (formData.minStockLevel < 0) newErrors.minStockLevel = 'Min stock level cannot be negative'
     if (formData.maxStockLevel <= formData.minStockLevel) {
       newErrors.maxStockLevel = 'Max stock level must be greater than min stock level'
@@ -303,11 +298,87 @@ export function ProductFormModal({
     }))
   }
 
+  // Handle file upload
+  const handleFileUpload = async (files: File[]) => {
+    if (files.length === 0) return
+
+    setUploadingFiles(true)
+    try {
+      const uploadPromises = files.map(async (file) => {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`${file.name} is not an image file`)
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error(`${file.name} is too large (max 5MB)`)
+        }
+
+        // Create FormData for upload
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('folder', 'products')
+
+        // Upload to backend API
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', file)
+        uploadFormData.append('folder', 'products')
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `Failed to upload ${file.name}`)
+        }
+
+        const data = await response.json()
+        return data.url
+      })
+
+      const uploadedUrls = await Promise.all(uploadPromises)
+
+      // Add uploaded URLs to images
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...uploadedUrls]
+      }))
+
+      setSelectedFiles([])
+
+      toast({
+        title: "Success",
+        description: `Successfully uploaded ${uploadedUrls.length} image(s)`
+      })
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      toast({
+        title: "Upload Error",
+        description: error.message || "Failed to upload images",
+        variant: "destructive"
+      })
+    } finally {
+      setUploadingFiles(false)
+    }
+  }
+
+  // Handle file selection
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    setSelectedFiles(files)
+    if (files.length > 0) {
+      handleFileUpload(files)
+    }
+  }
+
   const sections = [
     { id: 'basic', label: 'Basic Info' },
     { id: 'inventory', label: 'Inventory' },
     { id: 'media', label: 'Media' },
-    { id: 'seo', label: 'SEO' }
+
   ]
 
   return (
@@ -389,55 +460,7 @@ export function ProductFormModal({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="category">Category *</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) => {
-                          handleInputChange('category', value)
-                          handleInputChange('subcategory', '') // Reset subcategory
-                        }}
-                      >
-                        <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map(category => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.category && (
-                        <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.category}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="subcategory">Subcategory</Label>
-                      <Select
-                        value={formData.subcategory}
-                        onValueChange={(value) => handleInputChange('subcategory', value)}
-                        disabled={!formData.category}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subcategory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {formData.category && subcategories[formData.category]?.map(subcategory => (
-                            <SelectItem key={subcategory} value={subcategory}>
-                              {subcategory}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="brand">Brand</Label>
                       <Input
@@ -447,6 +470,7 @@ export function ProductFormModal({
                         placeholder="Enter brand name"
                       />
                     </div>
+                    <div aria-hidden className="hidden md:block" />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -730,11 +754,44 @@ export function ProductFormModal({
                 <div className="space-y-4">
                   <div>
                     <Label>Product Images</Label>
+
+                    {/* File Upload Section */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4 text-center hover:border-gray-400 transition-colors">
+                      <input
+                        type="file"
+                        id="file-upload"
+                        multiple
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        disabled={uploadingFiles}
+                      />
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        <div className="flex flex-col items-center">
+                          {uploadingFiles ? (
+                            <>
+                              <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+                              <p className="text-blue-600 font-medium">Uploading images...</p>
+                              <p className="text-sm text-gray-500">Please wait while we process your files</p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-12 w-12 text-gray-400 mb-4" />
+                              <p className="text-gray-600 font-medium">Upload from device</p>
+                              <p className="text-sm text-gray-500">Drag & drop or click to select images</p>
+                              <p className="text-xs text-gray-400 mt-2">Supports: JPG, PNG, WebP (max 5MB each)</p>
+                            </>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* URL Input Section */}
                     <div className="flex gap-2 mb-4">
                       <Input
                         value={newImageUrl}
                         onChange={(e) => setNewImageUrl(e.target.value)}
-                        placeholder="Enter image URL"
+                        placeholder="Or enter image URL"
                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addImageUrl())}
                       />
                       <Button type="button" onClick={addImageUrl} size="sm">
@@ -780,39 +837,7 @@ export function ProductFormModal({
                 </div>
               )}
 
-              {/* SEO */}
-              {activeSection === 'seo' && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="seoTitle">SEO Title</Label>
-                    <Input
-                      id="seoTitle"
-                      value={formData.seoTitle}
-                      onChange={(e) => handleInputChange('seoTitle', e.target.value)}
-                      placeholder="SEO optimized title (60 characters max)"
-                      maxLength={60}
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      {formData.seoTitle.length}/60 characters
-                    </p>
-                  </div>
 
-                  <div>
-                    <Label htmlFor="seoDescription">SEO Description</Label>
-                    <Textarea
-                      id="seoDescription"
-                      value={formData.seoDescription}
-                      onChange={(e) => handleInputChange('seoDescription', e.target.value)}
-                      placeholder="SEO meta description (160 characters max)"
-                      maxLength={160}
-                      rows={3}
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      {formData.seoDescription.length}/160 characters
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {/* Form Actions */}
               <div className="flex gap-3 pt-6 border-t">
