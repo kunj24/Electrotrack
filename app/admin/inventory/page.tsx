@@ -218,8 +218,24 @@ export default function AdminInventoryPage() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save product')
+        let errorMessage = `Failed to save product (${response.status})`
+        try {
+          const errorData = await response.json()
+          if (errorData?.error) {
+            errorMessage = String(errorData.error || 'Unknown error')
+          } else if (errorData?.message) {
+            errorMessage = String(errorData.message || 'Unknown error')
+          } else if (errorData?.details) {
+            errorMessage = `Validation error: ${JSON.stringify(errorData.details)}`
+          } else {
+            errorMessage = `Request failed with status ${response.status}`
+          }
+        } catch (parseError) {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || `Request failed with status ${response.status}`
+        }
+        console.log('Error message:', errorMessage)
+        throw new Error(errorMessage)
       }
 
       toast({
@@ -519,16 +535,7 @@ export default function AdminInventoryPage() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Products ({totalProducts})</CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import
-                  </Button>
-                </div>
+                <div />
               </div>
             </CardHeader>
             <CardContent>
