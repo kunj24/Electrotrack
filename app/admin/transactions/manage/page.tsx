@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, Plus } from "lucide-react"
+import { ArrowLeft, Save, Plus, Edit } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -28,31 +28,95 @@ export default function ManageTransaction() {
     type: "expense" as "income" | "expense",
     date: new Date().toISOString().split("T")[0],
     notes: "",
+    source: "offline" as "offline" | "expense",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [transactionId, setTransactionId] = useState<string | null>(null)
 
-  // Note: Edit functionality removed for now - use delete and re-add for modifications
+  // Load transaction data for editing
+  useEffect(() => {
+    const editId = searchParams.get('edit')
+    const editType = searchParams.get('type')
+    const editSource = searchParams.get('source')
 
-  const categories = [
-    "Sales",
-    "Online Sales",
-    "Repairs",
-    "Services",
-    "Inventory",
-    "Rent",
-    "Utilities",
-    "Marketing",
-    "Staff Salary",
-    "Equipment",
-    "Maintenance",
-    "Insurance",
-    "Transportation",
-    "Office Supplies",
-    "Professional Services",
-    "Other",
-  ]
+    if (editId && editType) {
+      setIsEditing(true)
+      setTransactionId(editId)
+      loadTransactionForEdit(editId, editType)
+    }
+
+    // Set initial source based on URL parameter
+    if (editSource) {
+      setFormData(prev => ({ ...prev, source: editSource as "offline" | "expense" }))
+    }
+  }, [searchParams])
+
+  const loadTransactionForEdit = async (id: string, type: string) => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/admin/all-transactions')
+      const data = await response.json()
+
+      if (data.success) {
+        const transaction = data.transactions.find((t: any) => t.id === id)
+        if (transaction) {
+          setFormData({
+            description: transaction.description || '',
+            amount: transaction.amount.toString() || '',
+            category: transaction.category || '',
+            type: transaction.type || 'expense',
+            date: transaction.date ? new Date(transaction.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            notes: transaction.notes || '',
+            source: transaction.source === 'online' ? 'offline' : (transaction.source || 'offline')
+          })
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load transaction for editing",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getCategories = () => {
+    if (formData.type === 'income') {
+      return [
+        "Offline Sales",
+        "Repairs",
+        "Services",
+        "Consultation",
+        "Installation",
+        "Warranty Claims",
+        "Other Income"
+      ]
+    } else {
+      return [
+        "Inventory Purchase",
+        "Rent",
+        "Utilities",
+        "Marketing",
+        "Staff Salary",
+        "Equipment",
+        "Maintenance",
+        "Insurance",
+        "Transportation",
+        "Office Supplies",
+        "Professional Services",
+        "Taxes",
+        "Bank Charges",
+        "Other Expenses"
+      ]
+    }
+  }
+
+  const categories = getCategories()
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -94,26 +158,42 @@ export default function ManageTransaction() {
         type: formData.type,
         date: formData.date,
         notes: formData.notes.trim(),
+        source: formData.source,
       }
 
-      // Call the analytics API to save to MongoDB
-      const response = await fetch('/api/admin/analytics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(transactionData),
-      })
+      let response
+      if (isEditing && transactionId) {
+        // Update existing transaction
+        response = await fetch('/api/admin/analytics', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: transactionId,
+            ...transactionData
+          }),
+        })
+      } else {
+        // Create new transaction
+        response = await fetch('/api/admin/analytics', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(transactionData),
+        })
+      }
 
       if (!response.ok) {
-        throw new Error('Failed to save transaction')
+        throw new Error(`Failed to ${isEditing ? 'update' : 'save'} transaction`)
       }
 
       const result = await response.json()
 
       toast({
-        title: "Transaction added!",
-        description: "The transaction has been successfully saved to the database.",
+        title: isEditing ? "Transaction updated!" : "Transaction added!",
+        description: `The transaction has been successfully ${isEditing ? 'updated' : 'saved'} in the database.`,
       })
 
       router.push("/admin/transactions")
@@ -152,10 +232,10 @@ export default function ManageTransaction() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Add New Transaction
+                {isEditing ? 'Edit Transaction' : 'Add New Transaction'}
               </h1>
               <p className="text-gray-600 mt-2">
-                Enter transaction information
+                {isEditing ? 'Update transaction information' : 'Enter transaction information'}
               </p>
             </div>
           </div>
@@ -164,22 +244,32 @@ export default function ManageTransaction() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Plus className="h-5 w-5 mr-2" />
+                {isEditing ? <Edit className="h-5 w-5 mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
                 Transaction Details
               </CardTitle>
               <CardDescription>
-                Fill in the information below to add the transaction
+                {isEditing ? 'Update the transaction information below' : 'Fill in the information below to add the transaction'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Transaction Type */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Transaction Type and Source */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <Label htmlFor="type">Transaction Type</Label>
                     <Select
                       value={formData.type}
-                      onValueChange={(value: "income" | "expense") => handleInputChange("type", value)}
+                      onValueChange={(value: "income" | "expense") => {
+                        handleInputChange("type", value)
+                        // Reset category when type changes
+                        handleInputChange("category", "")
+                        // Auto-set source based on type
+                        if (value === "income") {
+                          handleInputChange("source", "offline")
+                        } else {
+                          handleInputChange("source", "expense")
+                        }
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
@@ -187,6 +277,26 @@ export default function ManageTransaction() {
                       <SelectContent>
                         <SelectItem value="income">Income</SelectItem>
                         <SelectItem value="expense">Expense</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="source">Source</Label>
+                    <Select
+                      value={formData.source}
+                      onValueChange={(value: "offline" | "expense") => handleInputChange("source", value)}
+                      disabled={formData.type === "expense"}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formData.type === "income" ? (
+                          <SelectItem value="offline">Offline Sale</SelectItem>
+                        ) : (
+                          <SelectItem value="expense">Expense</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -272,12 +382,12 @@ export default function ManageTransaction() {
                     {isLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Adding...
+                        {isEditing ? 'Updating...' : 'Adding...'}
                       </>
                     ) : (
                       <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Transaction
+                        {isEditing ? <Save className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                        {isEditing ? 'Update Transaction' : 'Add Transaction'}
                       </>
                     )}
                   </Button>

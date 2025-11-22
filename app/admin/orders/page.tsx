@@ -9,11 +9,28 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Package, Search, Eye, Truck, RefreshCw } from "lucide-react"
+import { Package, Search, Eye, Truck, RefreshCw, Edit, Trash2, MoreHorizontal } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-
-interface Order {
+import { ViewOrderModal } from "@/components/view-order-modal"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"interface Order {
   _id: string
   orderId: string
   userEmail: string
@@ -48,6 +65,10 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -91,6 +112,55 @@ export default function AdminOrdersPage() {
         {status}
       </Badge>
     )
+  }
+
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order)
+    setShowViewModal(true)
+  }
+
+  const handleEditOrder = (order: Order) => {
+    // Navigate to edit order page
+    window.location.href = `/admin/orders/edit/${order._id}`
+  }
+
+  const handleDeleteOrder = (order: Order) => {
+    setSelectedOrder(order)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!selectedOrder) return
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/admin/orders/${selectedOrder._id}`, {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Order deleted successfully",
+        })
+        fetchOrders() // Refresh the list
+      } else {
+        throw new Error(data.error || 'Failed to delete order')
+      }
+    } catch (error: any) {
+      console.error('Delete order error:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete order",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+      setShowDeleteDialog(false)
+      setSelectedOrder(null)
+    }
   }
 
   if (loading) {
@@ -204,28 +274,37 @@ export default function AdminOrdersPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                              >
-                                <Link href={`/admin/orders/${order._id}`}>
-                                  <Truck className="h-4 w-4 mr-1" />
-                                  Track
-                                </Link>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                              >
-                                <Link href={`/admin/orders/${order._id}`}>
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  View
-                                </Link>
-                              </Button>
-                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={() => handleViewOrder(order)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleEditOrder(order)}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Order
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteOrder(order)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Order
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -248,6 +327,42 @@ export default function AdminOrdersPage() {
           </Card>
         </main>
       </div>
+
+      {/* View Order Modal */}
+      <ViewOrderModal
+        order={selectedOrder}
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false)
+          setSelectedOrder(null)
+        }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete order{" "}
+              <span className="font-medium">{selectedOrder?.orderId}</span>{" "}
+              and remove all associated data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? "Deleting..." : "Delete Order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
   {/* Chatbot removed from admin pages to avoid showing on admin UI */}
     </AdminRouteGuard>
