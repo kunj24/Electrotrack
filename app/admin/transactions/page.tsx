@@ -73,6 +73,8 @@ export default function AdminTransactions() {
   const [isExporting, setIsExporting] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set())
+  const [showBulkActions, setShowBulkActions] = useState(false)
 
   // Fetch transactions from API
   const fetchTransactions = async () => {
@@ -216,13 +218,95 @@ export default function AdminTransactions() {
     setShowDetailsModal(true)
   }
 
-  const handleDelete = (id: string) => {
-    // Delete functionality not implemented for MongoDB data
-    toast({
-      title: "Delete not available",
-      description: "Delete functionality is not available for MongoDB transactions.",
-      variant: "destructive"
-    })
+  const handleDelete = async (transaction: Transaction) => {
+    if (!confirm(`Are you sure you want to delete "${transaction.description}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/analytics?id=${transaction.id}&type=${transaction.type}`, {
+        method: 'DELETE'
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Transaction deleted",
+          description: "The transaction has been successfully deleted."
+        })
+        // Refresh the transactions list
+        fetchTransactions()
+      } else {
+        throw new Error(data.error || 'Failed to delete transaction')
+      }
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Failed to delete transaction",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    const selectedList = Array.from(selectedTransactions)
+    if (selectedList.length === 0) return
+
+    if (!confirm(`Are you sure you want to delete ${selectedList.length} transactions? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const deletePromises = selectedList.map(async (id) => {
+        const transaction = transactions.find(t => t.id === id)
+        if (transaction && transaction.source !== 'online') {
+          return fetch(`/api/admin/analytics?id=${id}&type=${transaction.type}`, {
+            method: 'DELETE'
+          })
+        }
+        return null
+      })
+
+      await Promise.all(deletePromises.filter(p => p !== null))
+
+      toast({
+        title: "Transactions deleted",
+        description: `Successfully deleted ${selectedList.length} transactions.`
+      })
+
+      setSelectedTransactions(new Set())
+      setShowBulkActions(false)
+      fetchTransactions()
+    } catch (error) {
+      toast({
+        title: "Bulk delete failed",
+        description: "Some transactions could not be deleted.",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleSelectTransaction = (id: string) => {
+    const newSelected = new Set(selectedTransactions)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedTransactions(newSelected)
+    setShowBulkActions(newSelected.size > 0)
+  }
+
+  const handleSelectAll = () => {
+    const editableTransactions = filteredTransactions.filter(t => t.source !== 'online')
+    if (selectedTransactions.size === editableTransactions.length) {
+      setSelectedTransactions(new Set())
+      setShowBulkActions(false)
+    } else {
+      setSelectedTransactions(new Set(editableTransactions.map(t => t.id)))
+      setShowBulkActions(true)
+    }
   }
 
   return (
@@ -237,12 +321,20 @@ export default function AdminTransactions() {
               <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
               <p className="text-gray-600 mt-2">Manage all financial transactions</p>
             </div>
-            <Button asChild>
-              <Link href="/admin/transactions/manage">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Transaction
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              {showBulkActions && (
+                <Button variant="destructive" onClick={handleBulkDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected ({selectedTransactions.size})
+                </Button>
+              )}
+              <Button asChild>
+                <Link href="/admin/transactions/manage">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Transaction
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Summary Stats */}
@@ -465,6 +557,14 @@ export default function AdminTransactions() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[50px]">
+                        <input
+                          type="checkbox"
+                          checked={selectedTransactions.size === filteredTransactions.filter(t => t.source !== 'online').length && filteredTransactions.filter(t => t.source !== 'online').length > 0}
+                          onChange={handleSelectAll}
+                          className="rounded border-gray-300"
+                        />
+                      </TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Category</TableHead>
@@ -478,7 +578,19 @@ export default function AdminTransactions() {
                     {filteredTransactions
                       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                       .map((transaction, index) => (
-                        <TableRow key={`${transaction.id}-${index}`}>
+                        <TableRow key={`${transaction.id}-${index}`} className={selectedTransactions.has(transaction.id) ? 'bg-blue-50' : ''}>
+                          <TableCell>
+                            {transaction.source !== 'online' ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedTransactions.has(transaction.id)}
+                                onChange={() => handleSelectTransaction(transaction.id)}
+                                className="rounded border-gray-300"
+                              />
+                            ) : (
+                              <div className="w-4 h-4"></div>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <div className="font-medium">
                               {new Date(transaction.date).toLocaleDateString('en-GB', {
@@ -543,22 +655,32 @@ export default function AdminTransactions() {
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 {transaction.source === 'online' ? (
-                                  <DropdownMenuItem onClick={() => handleViewDetails(transaction)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Details
-                                  </DropdownMenuItem>
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleViewDetails(transaction)}>
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/admin/orders?orderId=${transaction.id}`}>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit Order
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  </>
                                 ) : (
                                   <DropdownMenuItem asChild>
-                                    <Link href={`/admin/transactions/manage?edit=${transaction.id}`}>
+                                    <Link href={`/admin/transactions/manage?edit=${transaction.id}&type=${transaction.type}&source=${transaction.source}`}>
                                       <Edit className="h-4 w-4 mr-2" />
                                       Edit
                                     </Link>
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem onClick={() => handleDelete(transaction.id)} className="text-red-600">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
+                                {transaction.source !== 'online' && (
+                                  <DropdownMenuItem onClick={() => handleDelete(transaction)} className="text-red-600">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
