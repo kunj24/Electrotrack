@@ -182,7 +182,7 @@ Login → Previous cart items loaded → Shipping address pre-filled → Seamles
 Add to `.env.local`:
 ```env
 # MongoDB Atlas (recommended)
-MONGODB_URI=your_mongodb_atlas_connection_string_here
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database>
 MONGODB_DB=radhika_electronics
 
 # OR Local MongoDB
