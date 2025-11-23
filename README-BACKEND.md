@@ -40,7 +40,7 @@ x
    - Copy the connection string
 4. **Update .env.local**:
    ```env
-   MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database>
+   MONGODB_URI=[YOUR_MONGODB_ATLAS_CONNECTION_STRING]
    MONGODB_DB=radhika_electronics
    ```
 5. **Test**: Visit `http://localhost:3000/api/health`
