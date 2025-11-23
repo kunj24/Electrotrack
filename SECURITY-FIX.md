@@ -4,8 +4,8 @@
 GitHub's secret scanning detected MongoDB connection string patterns in documentation files that could be mistaken for real credentials.
 
 ## Actions Taken
-1. ✅ Updated all documentation files to use placeholder patterns
-2. ✅ Replaced `your_mongodb_connection_string_here` with safe `mongodb+srv://<username>:<password>@<cluster-url>/<database>` format
+1. ✅ Updated all documentation files to use safe placeholder patterns
+2. ✅ Replaced connection string examples with secure placeholder format
 3. ✅ Ensured no actual credentials are exposed in the repository
 
 ## Files Updated
@@ -34,4 +34,4 @@ MONGODB_URI=[YOUR_MONGODB_ATLAS_CONNECTION_STRING]
 # Get this from MongoDB Atlas → Connect → Connect your application
 ```
 
-This fix ensures your repository is secure and follows best practices for credential management.
+This fix ensures your repository is secure and follows best practices for credential management
