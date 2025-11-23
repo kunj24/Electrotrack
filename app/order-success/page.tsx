@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Header } from "@/components/header"
@@ -10,7 +10,7 @@ import { CheckCircle, Package, Truck, Home, CreditCard, Calendar, User, MapPin }
 import { userAuth } from "@/lib/user-auth"
 import { CartService } from "@/lib/cart-service"
 
-export default function OrderSuccessPage() {
+function OrderSuccessContent() {
   const [orderData, setOrderData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
@@ -292,5 +292,23 @@ export default function OrderSuccessPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <OrderSuccessContent />
+    </Suspense>
   )
 }
