@@ -28,10 +28,10 @@ GitHub's secret scanning detected MongoDB connection string patterns in document
 ## Safe Connection String Format
 ```
 # Safe documentation format
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database>
+MONGODB_URI=[YOUR_MONGODB_ATLAS_CONNECTION_STRING]
 
-# Your actual .env.local should look like:
-MONGODB_URI=mongodb+srv://myuser:mypassword@cluster0.abcdef.mongodb.net/myapp
+# Your actual .env.local should contain your real connection string
+# Get this from MongoDB Atlas → Connect → Connect your application
 ```
 
 This fix ensures your repository is secure and follows best practices for credential management.

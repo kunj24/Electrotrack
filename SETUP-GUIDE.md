@@ -34,7 +34,7 @@ Create a `.env.local` file in the root directory with:
 
 ```env
 # MongoDB Configuration
-MONGDB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database>
+MONGODB_URI=[YOUR_MONGODB_ATLAS_CONNECTION_STRING]
 DATABASE_NAME=radhika_electronics
 
 # Razorpay Configuration (for payment processing)
