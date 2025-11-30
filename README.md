@@ -2,101 +2,104 @@
 
 A modern e-commerce platform built with Next.js, TypeScript, and MongoDB.
 
-## Features
+## Highlights
 
-- **User Authentication**: Secure user registration and login system
-- **Product Management**: Admin dashboard for managing products and inventory
-- **Shopping Cart**: Persistent cart functionality with user sessions
-- **Order Management**: Complete order processing and tracking system
-- **Payment Integration**: Razorpay payment gateway integration
-- **Admin Dashboard**: Comprehensive admin panel with analytics and management tools
-- **Responsive Design**: Mobile-first responsive design using Tailwind CSS
+- **Authentication**: Secure user and admin login flows
+- **Product & Inventory**: Full CRUD via admin dashboard
+- **Cart & Orders**: Persistent carts, order placement, tracking timeline
+- **Payments**: Razorpay integration with server-side verification
+- **Analytics**: Admin insights on transactions and orders
+- **Responsive UI**: Tailwind CSS and shadcn/ui components
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 15 (App Router), TypeScript, Tailwind CSS
 - **Backend**: Next.js API Routes
 - **Database**: MongoDB
-- **Authentication**: Custom authentication system
-- **Payment**: Razorpay integration
-- **UI Components**: Shadcn/ui components
+- **Payments**: Razorpay
+- **UI Library**: shadcn/ui
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
-- MongoDB database (local or MongoDB Atlas)
-- Razorpay account for payments
+- Node.js 18+
+- MongoDB (local or Atlas)
+- Razorpay account (test or live keys)
 
-### Installation
+### Setup
 
-1. Clone the repository:
+1. Clone and install:
 ```bash
 git clone https://github.com/kunj24/Electrotrack.git
 cd Electrotrack
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Set up environment variables:
-Create a `.env.local` file in the root directory:
+2. Environment variables: create `.env.local` at repo root.
 ```env
+# MongoDB
 MONGODB_URI=[YOUR_MONGODB_CONNECTION_STRING]
 DATABASE_NAME=electrotrack
+
+# Razorpay
 RAZORPAY_KEY_ID=[YOUR_RAZORPAY_KEY_ID]
 RAZORPAY_KEY_SECRET=[YOUR_RAZORPAY_SECRET]
 ```
 
-4. Run the development server:
+3. Run:
 ```bash
 npm run dev
 ```
+Open `http://localhost:3000`.
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+### Common Scripts
+
+- `npm run dev` — start dev server
+- `npm run build` — production build
+- `npm start` — run production build
 
 ## Project Structure
 
 ```
 ├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   ├── admin/             # Admin dashboard pages
-│   ├── cart/              # Shopping cart page
-│   ├── dashboard/         # User dashboard
-│   └── ...               # Other pages
-├── components/            # Reusable UI components
-├── lib/                   # Utility functions and configurations
-├── public/                # Static assets
-└── styles/               # Global styles
+│   ├── api/                # API routes
+│   ├── admin/              # Admin dashboard
+│   ├── cart/               # Cart page
+│   ├── dashboard/          # User dashboard
+│   └── ...                 # Other pages
+├── components/             # Reusable UI components
+├── lib/                    # Utilities, db, auth
+├── public/                 # Static assets
+└── styles/                 # Global styles
 ```
 
-## Key Features
+## Features in Detail
 
-### User Features
-- Product browsing and search
-- Shopping cart management
-- Order placement and tracking
-- User profile management
-- Address management
+### User
+- Browse products, add to cart, checkout
+- Persisted cart and saved addresses
+- View order status and tracking timeline
 
-### Admin Features
-- Product inventory management
-- Order management with CRUD operations
-- Transaction tracking and analytics
-- User management
-- Dashboard with real-time data
+### Admin
+- Manage products and inventory (CRUD)
+- View, edit, and delete orders
+- Transactions management and analytics
 
-## Contributing
+## Security & Secrets
+
+- Environment files (`.env.local`) are **gitignored** and must not be committed.
+- Do not include secrets in documentation or code samples.
+- If a secret was ever committed, rotate the credential and remove it from history.
+
+## Contribution Guide
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Commit: `git commit -m "feat: add your feature"`
+4. Push: `git push origin feature/your-feature`
 5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License — see `LICENSE` for details.
