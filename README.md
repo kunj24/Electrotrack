@@ -92,6 +92,29 @@ Open `http://localhost:3000`.
 - Do not include secrets in documentation or code samples.
 - If a secret was ever committed, rotate the credential and remove it from history.
 
+## Deployment
+
+### Vercel (Recommended)
+
+1. Connect your GitHub repo to Vercel
+2. Add environment variables in Vercel dashboard:
+   - `MONGODB_URI`
+   - `DATABASE_NAME`
+   - `RAZORPAY_KEY_ID`
+   - `RAZORPAY_KEY_SECRET`
+3. Deploy automatically on push to `main` branch
+
+### Manual Deployment
+
+1. Build the app: `npm run build`
+2. Start production server: `npm start`
+3. Ensure MongoDB is accessible and environment variables are set
+
+## Repository Status
+
+- Repository has been cleaned up: removed unnecessary documentation, placeholder images, and debug scripts
+- Only essential files remain for production deployment
+
 ## Contribution Guide
 
 1. Fork the repository
