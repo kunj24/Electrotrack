@@ -30,7 +30,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"interface Order {
+} from "@/components/ui/alert-dialog";
+
+interface Order {
   _id: string
   orderId: string
   userEmail: string
@@ -245,8 +247,8 @@ export default function AdminOrdersPage() {
             </CardHeader>
             <CardContent>
               {filteredOrders.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
+                <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <Table className="min-w-[700px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Order ID</TableHead>
