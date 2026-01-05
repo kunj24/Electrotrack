@@ -317,7 +317,7 @@ export function FlipkartAddressManager({
                 Add New Address
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingAddress ? 'Edit Address' : 'Add New Address'}

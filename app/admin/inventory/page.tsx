@@ -564,7 +564,8 @@ export default function AdminInventoryPage() {
                 </div>
               ) : (
                 <>
-                  <Table>
+                  <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <Table className="min-w-[800px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead
@@ -718,6 +719,7 @@ export default function AdminInventoryPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
 
                   {/* Pagination */}
                   {totalPages > 1 && (

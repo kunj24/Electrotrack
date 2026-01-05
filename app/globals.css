@@ -34,4 +34,23 @@
   body {
     @apply bg-background text-foreground;
   }
+  html, body, #__next {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  img, svg, iframe, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  main, header, footer, section, article {
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
 }

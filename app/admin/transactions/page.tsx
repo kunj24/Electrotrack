@@ -554,7 +554,8 @@ export default function AdminTransactions() {
                   </Button>
                 </div>
               ) : filteredTransactions.length > 0 ? (
-                <Table>
+                <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px]">
@@ -688,6 +689,7 @@ export default function AdminTransactions() {
                       ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <div className="text-gray-500 mb-4">
@@ -714,7 +716,7 @@ export default function AdminTransactions() {
 
       {/* Order Details Modal */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
