@@ -13,12 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { LogOut, Settings, User, Home, ExternalLink } from "lucide-react"
+import { Menu, X, LogOut, Settings, User, Home, ExternalLink } from "lucide-react"
 import { adminAuth } from "@/lib/admin-auth"
 import { useToast } from "@/hooks/use-toast"
 
 export function AdminHeader() {
   const [currentAdmin, setCurrentAdmin] = useState<any>(null)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -91,6 +92,16 @@ export function AdminHeader() {
 
           {/* Right side - Visit Store and Admin Profile */}
           <div className="flex items-center space-x-4">
+            {/* Mobile menu button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="md:hidden bg-transparent"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
+
             {/* Visit Store Button */}
             <Link href="/">
               <Button variant="outline" size="sm" className="flex items-center space-x-2 bg-transparent">
@@ -138,6 +149,32 @@ export function AdminHeader() {
             )}
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <nav className="md:hidden mt-4 pb-4 border-t pt-4">
+            <div className="flex flex-col space-y-3">
+              <Link href="/admin" className="text-gray-700 hover:text-red-600 font-medium">
+                Dashboard
+              </Link>
+              <Link href="/admin/inventory" className="text-gray-700 hover:text-red-600 font-medium">
+                Inventory
+              </Link>
+              <Link href="/admin/analytics" className="text-gray-700 hover:text-red-600 font-medium">
+                Analytics
+              </Link>
+              <Link href="/admin/orders" className="text-gray-700 hover:text-red-600 font-medium">
+                Orders
+              </Link>
+              <Link href="/admin/transactions" className="text-gray-700 hover:text-red-600 font-medium">
+                Transactions
+              </Link>
+              <Link href="/admin/transactions/manage" className="text-gray-700 hover:text-red-600 font-medium">
+                Manage
+              </Link>
+            </div>
+          </nav>
+        )}
       </div>
     </header>
   )
