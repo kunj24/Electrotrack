@@ -92,7 +92,7 @@ export function ViewOrderModal({ order, isOpen, onClose }: ViewOrderModalProps) 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Order Details</span>
