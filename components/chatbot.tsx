@@ -755,7 +755,7 @@ To complete your purchase, please visit our checkout page or continue shopping.`
   };
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 max-w-full font-sans z-50">
+    <div className="fixed bottom-6 right-6 w-80 sm:w-96 max-w-[calc(100vw-3rem)] font-sans z-50">
       {/* Chat toggle button */}
       {!isChatOpen && (
         <div className="flex justify-end">
