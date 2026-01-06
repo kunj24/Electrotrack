@@ -13,7 +13,6 @@
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Tech Stack](#️-tech-stack) • [Deployment](#-deployment) • [Contributing](#-contributing)
 
----
 
 </div>
 
@@ -23,14 +22,7 @@
 
 ### ✨ Why Electrotrack?
 
-- 🚀 **Lightning Fast** - Built on Next.js 15 with App Router for optimal performance
-- 📱 **Mobile First** - Fully responsive design that works seamlessly on all devices
-- 🔒 **Secure** - Industry-standard authentication and payment processing
-- 📊 **Analytics Ready** - Built-in admin dashboard with comprehensive business insights
-- 🎨 **Modern UI** - Beautiful interface powered by Tailwind CSS and shadcn/ui
-- 🛒 **Feature Complete** - Everything from cart management to order tracking
 
----
 
 ## ✨ Features
 
@@ -40,24 +32,20 @@
 
 ### 👥 Customer Features
 
-- 🔐 **Secure Authentication**
   - Email/Password login
   - Google OAuth integration
   - Email verification
 
-- 🛍️ **Shopping Experience**
   - Advanced product search & filters
   - Category-based browsing
   - Detailed product pages with reviews
   - Real-time stock availability
 
-- 🛒 **Cart & Checkout**
   - Persistent cart across sessions
   - Multiple address management
   - Razorpay payment gateway
   - Order confirmation & receipts
 
-- 📦 **Order Management**
   - Order history & tracking
   - Real-time status updates
   - Tracking timeline visualization
@@ -68,25 +56,21 @@
 
 ### 👨‍💼 Admin Features
 
-- 📊 **Dashboard Analytics**
   - Revenue & sales metrics
   - Order statistics
   - Customer insights
   - Visual charts & graphs
 
-- 📦 **Inventory Management**
   - Product CRUD operations
   - Bulk inventory updates
   - Category management
   - Image upload & optimization
 
-- 🛍️ **Order Processing**
   - Order status management
   - Customer information access
   - Transaction tracking
   - Refund processing
 
-- 💳 **Transaction Management**
   - Payment verification
   - Transaction history
   - Revenue reports
@@ -96,7 +80,6 @@
 </tr>
 </table>
 
----
 
 ## 🛠️ Tech Stack
 
@@ -105,40 +88,21 @@
 <td>
 
 **Frontend**
-- ⚛️ React 19
-- ⚡ Next.js 15 (App Router)
-- 📘 TypeScript
-- 🎨 Tailwind CSS
-- 🧩 shadcn/ui Components
-- 📊 Recharts & ApexCharts
-- 🎭 Framer Motion
 
 </td>
 <td>
 
 **Backend**
-- 🟢 Next.js API Routes
-- 🗄️ MongoDB (Mongoose)
-- 🔐 NextAuth.js
-- 💳 Razorpay Integration
-- 📧 Nodemailer
-- 🔒 bcryptjs
 
 </td>
 <td>
 
 **Development**
-- 📦 pnpm Package Manager
-- 🧪 Vitest for Testing
-- 🎯 ESLint & Prettier
-- 🔍 TypeScript Strict Mode
-- 🚀 Vercel Deployment
 
 </td>
 </tr>
 </table>
 
----
 
 ## 🚀 Quick Start
 
@@ -146,10 +110,6 @@
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js** 18.x or higher
-- **pnpm** (recommended) or npm
-- **MongoDB** (local instance or MongoDB Atlas account)
-- **Razorpay Account** (for payment processing)
 
 ### Installation
 
@@ -204,7 +164,6 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser 🎉
 
----
 
 ## 📜 Available Scripts
 
@@ -215,7 +174,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser 🎉
 | `pnpm start` | Run production server |
 | `pnpm lint` | Run ESLint for code quality checks |
 
----
 
 ## 📁 Project Structure
 
@@ -251,20 +209,12 @@ Electrotrack/
 └── types/                        # TypeScript type definitions
 ```
 
----
 
 ## 🔐 Security Best Practices
 
-- 🔒 All sensitive data is stored in environment variables
-- 🚫 `.env.local` files are gitignored and never committed
-- 🔐 Passwords are hashed using bcryptjs
-- ✅ Payment processing uses server-side verification
-- 🛡️ API routes are protected with authentication middleware
-- 🔍 Input validation and sanitization on all forms
 
 > **⚠️ Important:** Never commit API keys, secrets, or credentials to version control. If accidentally committed, rotate the credentials immediately.
 
----
 
 ## 🚀 Deployment
 
@@ -277,12 +227,6 @@ Electrotrack/
 3. Deploy automatically on every push to `main`
 
 **Environment Variables Required:**
-- `MONGODB_URI`
-- `DATABASE_NAME`
-- `RAZORPAY_KEY_ID`
-- `RAZORPAY_KEY_SECRET`
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
 
 ### Manual Deployment
 
@@ -295,11 +239,7 @@ pnpm start
 ```
 
 Ensure your production environment has:
-- ✅ Node.js 18+ installed
-- ✅ All environment variables configured
-- ✅ MongoDB accessible from production server
 
----
 
 ## 📸 Screenshots
 
@@ -316,7 +256,6 @@ Ensure your production environment has:
 
 </div>
 
----
 
 ## 🤝 Contributing
 
@@ -341,62 +280,31 @@ We welcome contributions from the community! Here's how you can help:
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `docs:` - Documentation changes
-- `style:` - Code style changes (formatting, etc.)
-- `refactor:` - Code refactoring
-- `test:` - Adding or updating tests
-- `chore:` - Maintenance tasks
 
----
 
 ## 📋 Roadmap
 
-- [ ] Multi-language support (i18n)
-- [ ] Dark mode theme
-- [ ] PWA support for offline functionality
-- [ ] Advanced analytics dashboard
-- [ ] Product review system
-- [ ] Wishlist functionality
-- [ ] Social media integration
-- [ ] Email marketing integration
 
----
 
 ## 📞 Support
 
 Need help? We're here for you!
 
-- 📧 **Email:** jayeshsavaliya3011@gmail.com
-- 🐛 **Issues:** [GitHub Issues](https://github.com/kunj24/Electrotrack/issues)
-- 💬 **Discussions:** [GitHub Discussions](https://github.com/kunj24/Electrotrack/discussions)
 
----
 
 ## 👨‍💻 Authors
 
 **Radhika Electronics Team**
-- Built with ❤️ for electronics retailers worldwide
 
----
 
 ## 📄 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
----
 
 ## 🙏 Acknowledgments
 
-- [Next.js](https://nextjs.org/) - The React Framework
-- [Vercel](https://vercel.com/) - Deployment Platform
-- [shadcn/ui](https://ui.shadcn.com/) - UI Components
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [MongoDB](https://www.mongodb.com/) - Database
-- [Razorpay](https://razorpay.com/) - Payment Gateway
 
----
 
 <div align="center">
 
